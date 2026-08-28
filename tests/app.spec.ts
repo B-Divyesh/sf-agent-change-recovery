@@ -146,7 +146,8 @@ test('built security policy keeps frame ancestry in the response header only', a
 });
 
 test('static deployment config has a real 404 and immutable hashed assets', () => {
-  const config = JSON.parse(readFileSync('public/staticwebapp.config.json', 'utf8')) as { routes: { route: string; statusCode?: number; headers?: Record<string, string> }[] };
+  const config = JSON.parse(readFileSync('public/staticwebapp.config.json', 'utf8')) as { routes: { route: string; statusCode?: number; rewrite?: string; headers?: Record<string, string> }[] };
+  expect(config.routes.some(route => route.route === '/' && route.rewrite === '/index.html')).toBe(true);
   expect(config.routes.some(route => route.route === '/*' && route.statusCode === 404)).toBe(true);
   expect(config.routes.find(route => route.route === '/assets/*')?.headers?.['Cache-Control']).toContain('immutable');
 });
