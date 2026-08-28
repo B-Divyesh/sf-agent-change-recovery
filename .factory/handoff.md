@@ -1,69 +1,52 @@
-# Handoff — Change Recovery Ledger v0.1.0
+# Handoff — independent verification 2
 
-## Independent verification status — FAIL (2026-08-28)
+## Verdict
 
-Candidate `5239f73f4d878febb6931ef4ab5edb592dce8092` at `https://agent-change-recovery.sociobot.in` **must not be released**. The central exported recovery patch is malformed: the live demo export fails `patch --dry-run` with `Only garbage was found in the patch input`. The live site also logs a CSP console error on every route, horizontally overflows at 390px (`scrollWidth` 429), and sends only 30-second cache headers for hashed assets. A clean Linux AppImage package build also exits 1 at `linuxdeploy` after compiling the optimized binary. Full independent evidence and passing checks are in `.factory/verification.md`.
+**FAIL — candidate `5239f73f4d878febb6931ef4ab5edb592dce8092` must not be released or promoted.**
 
-## What was built
+Tested live URL: `https://agent-change-recovery.sociobot.in` on 2026-08-28 UTC. Full evidence is in `.factory/verification-2.md`.
 
-- Tauri 2 desktop app with a Rust snapshot core and a Vite/TypeScript interface.
-- Local project checkpoints grouped by intent, command trail, changed files, and check state.
-- File comparison against the previous checkpoint, with generated folders and files over 2 MB excluded.
-- Selective reversal that creates a full safety checkpoint before touching selected files.
-- Plain patch export that never executes the patch.
-- Pro flow through Sociobot checkout and license verification. A cached active license permits more than seven checkpoints, retention of 30, 90, or all checkpoints, and AES-256-GCM recovery export. Export keys use Argon2 and a user passphrase that is not stored.
-- One-click `/demo` with four realistic checkpoints, isolated `demo:` storage, reset, offline reload, selective reversal, and patch download.
-- Risograph tactile collage identity, generated hero art, three-frame product walkthrough, responsive 390px layout, reduced-motion treatment, legal pages, 404, release detection, PWA shell, and installer scripts.
-- GitHub Actions workflows for quality checks and unsigned macOS arm64/x64, Windows x64, Linux AppImage/deb release builds. The release workflow also publishes `SHA256SUMS` and `latest.json`.
+## Release blockers
 
-## How to run and verify
+1. Exported `.patch` files use invalid hunk headers; `patch --dry-run` exits 2 with “Only garbage was found in the patch input.” The core replay job is broken.
+2. “Buy Pro” returns HTTP 404, so the advertised $15/month plan cannot be purchased.
+3. Every live route logs an invalid meta-CSP `frame-ancestors` console error.
+4. The landing page is 429px wide at a 390px viewport.
+5. Reverse-dialog focus escapes behind the modal and is not restored on close.
+6. Material privacy/safety claims are absent from `.factory/claims.json` or are tested only in the browser demo.
+7. A clean local AppImage package build exits 1 at `linuxdeploy`.
+
+Additional findings: 30-second cache TTL on hashed assets, unknown routes return 200, footer factory link has an invalid TLS hostname, median mobile LCP is 2.66s, and several targets are under 44px.
+
+## What passed
+
+- Mandatory claims: 8/8 after installing the repository’s documented Tauri Linux prerequisites.
+- Cold first-read and one-click sample demo.
+- `npm test`: 14/14; Rust: 5/5; TypeScript/build, format, strict Clippy, npm audit, and `.deb` packaging.
+- Actual native reversal restored a changed file byte-for-byte and created a safety checkpoint.
+- Axe serious/critical: zero across all routes at desktop and 390px.
+- Same-origin demo privacy, reduced motion, service-worker update, and offline reload.
+- Unlock API throttling: allowance 30; request 31 returned 429 with `Retry-After: 3`.
+- Live HTML/JS/CSS exactly match the candidate build.
+- Published Linux `.deb` checksum matches; release metadata and all platform assets exist; `install.sh` verifies the AppImage.
+
+## Reproduce
 
 ```sh
 npm ci
 npm test
 cargo test --manifest-path src-tauri/Cargo.toml
-npm run build:site
+npm run build
+cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+CI=true npm run tauri build -- --bundles deb
+CI=true npm run tauri build -- --bundles appimage
 ```
 
-Static deploy output: `dist/site` with `dist/site/index.html` at its root.
+Ubuntu needs `libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf` before Rust/Tauri commands.
 
-Desktop development:
+## Operator action after code fixes
 
-```sh
-npm run tauri dev
-```
-
-Linux needs the normal Tauri WebKit 4.1 development packages listed in the CI workflow.
-
-## Verification completed on 2026-08-28
-
-- `npm test`: 14/14 Playwright tests passed.
-- Claim suite: selective reversal, patch export, demo isolation, same-origin demo requests, offline reload, and exact paid price passed.
-- Accessibility: automated Axe checks reported no serious or critical findings on `/`, `/demo`, `/app`, `/privacy`, `/terms`, and the 404 state.
-- Native tests: 5/5 passed, including path traversal rejection, ignored generated folders, free limit, and encrypted output.
-- `npm audit --audit-level=high`: 0 vulnerabilities.
-- `npm run build:site`: passed. Initial JS is 10.22 KB gzip; CSS is 4.10 KB gzip; mobile hero is 44 KB WebP.
-- Lighthouse mobile on the production build: Performance 99, Accessibility 100, Best Practices 96, SEO 100; LCP 2.1 s, CLS 0, total blocking time 20 ms.
-- Visual review completed at 1440px and 390px. The mobile test asserts no horizontal overflow.
-- `git diff --check`: clean.
-- GitHub Release `v0.1.0`: all four matrix builds and metadata job passed. Published assets include arm64/x64 DMGs, AppImage, deb, rpm, MSI, Windows setup EXE, app tarballs, `SHA256SUMS`, and `latest.json`.
-- Download verification: the published Windows MSI matched SHA-256 `0fab896a7561429325ac97887dea5f86a424976bcb52651d4b9f667a870258d2`. The published `latest.json` parsed as version `0.1.0` with 9 platform assets.
-
-## Storage and safety notes
-
-- Native checkpoints live under the operating system’s app-local-data directory in `ledgers/<project-hash>`.
-- Native patch and encrypted recovery exports live under the app-local-data `exports` directory.
-- The app never writes its ledger into the watched project and never invokes Git commands.
-- Restore accepts only relative paths without parent, root, or platform-prefix components.
-- The first capture establishes a baseline. A later checkpoint is required before reversal can target a previous state.
-
-## Needs operator action
-
-- Register the paid product with the factory billing process if it is not registered yet. The client uses the slug-based Sociobot URL and contains no product ID.
-- Add `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `WINDOWS_CERT_PFX`, and `WINDOWS_CERT_PASSWORD` to GitHub Actions when signed builds are wanted. Without them, v0.1 packages are intentionally unsigned.
-- Submit the Windows package to winget and complete macOS notarization after signing certificates are available.
-
-## Known gaps
-
-- Homebrew and winget catalog submission remains an operator distribution task.
-- The app records commands supplied by the developer; it does not hook or run an agent process.
+- Enable/register `agent-change-recovery` in the Sociobot billing engine.
+- Configure signing/notarization secrets when signed macOS and Windows builds are wanted.
+- Republish and reverify all platform assets after the patch/export fix.
