@@ -44,4 +44,6 @@ The production Sociobot checkout has not been registered: on 2026-08-28 UTC, `GE
 
 Static deployment target: `dist/site` using `/opt/fleet/lib/deploy-static.sh agent-change-recovery dist/site`.
 
+Deployed successfully on 2026-08-28 UTC. Live Chromium checks at `https://agent-change-recovery.sociobot.in` returned 200 with 390px width on `/`, `/demo`, `/app`, `/privacy`, and `/terms`; those routes had zero console errors. `/not-a-route` returned a real 404 with the styled not-found title. The live hashed JS response has `Cache-Control: public, max-age=31536000, immutable`.
+
 Desktop release configuration remains unchanged. Existing GitHub release `v0.1.0` packages remain unsigned; macOS and Windows signing certificates are still an operator action if signed installers are required.
