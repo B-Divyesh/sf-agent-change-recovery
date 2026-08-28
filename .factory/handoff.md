@@ -1,5 +1,9 @@
 # Handoff — Change Recovery Ledger v0.1.0
 
+## Independent verification status — FAIL (2026-08-28)
+
+Candidate `5239f73f4d878febb6931ef4ab5edb592dce8092` at `https://agent-change-recovery.sociobot.in` **must not be released**. The central exported recovery patch is malformed: the live demo export fails `patch --dry-run` with `Only garbage was found in the patch input`. The live site also logs a CSP console error on every route, horizontally overflows at 390px (`scrollWidth` 429), and sends only 30-second cache headers for hashed assets. A clean Linux AppImage package build also exits 1 at `linuxdeploy` after compiling the optimized binary. Full independent evidence and passing checks are in `.factory/verification.md`.
+
 ## What was built
 
 - Tauri 2 desktop app with a Rust snapshot core and a Vite/TypeScript interface.
