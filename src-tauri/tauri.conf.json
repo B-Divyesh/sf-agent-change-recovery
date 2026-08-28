@@ -26,7 +26,7 @@
     "category": "DeveloperTool",
     "shortDescription": "Reverse selected agent changes without losing the rest.",
     "longDescription": "A local checkpoint ledger for inspecting, reversing, and exporting selected agent changes.",
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png"],
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico"],
     "macOS": { "minimumSystemVersion": "10.13" },
     "linux": { "appimage": { "bundleMediaFramework": false } }
   }
