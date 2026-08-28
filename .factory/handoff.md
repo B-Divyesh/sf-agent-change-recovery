@@ -42,6 +42,8 @@ Linux needs the normal Tauri WebKit 4.1 development packages listed in the CI wo
 - Lighthouse mobile on the production build: Performance 99, Accessibility 100, Best Practices 96, SEO 100; LCP 2.1 s, CLS 0, total blocking time 20 ms.
 - Visual review completed at 1440px and 390px. The mobile test asserts no horizontal overflow.
 - `git diff --check`: clean.
+- GitHub Release `v0.1.0`: all four matrix builds and metadata job passed. Published assets include arm64/x64 DMGs, AppImage, deb, rpm, MSI, Windows setup EXE, app tarballs, `SHA256SUMS`, and `latest.json`.
+- Download verification: the published Windows MSI matched SHA-256 `0fab896a7561429325ac97887dea5f86a424976bcb52651d4b9f667a870258d2`. The published `latest.json` parsed as version `0.1.0` with 9 platform assets.
 
 ## Storage and safety notes
 
@@ -59,6 +61,5 @@ Linux needs the normal Tauri WebKit 4.1 development packages listed in the CI wo
 
 ## Known gaps
 
-- The release metadata on the landing page stays in its calm “being published” state until the first GitHub Release finishes.
-- Linux distribution beyond AppImage and deb, plus Homebrew and winget catalog submission, remains an operator distribution task.
+- Homebrew and winget catalog submission remains an operator distribution task.
 - The app records commands supplied by the developer; it does not hook or run an agent process.
