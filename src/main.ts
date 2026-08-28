@@ -1,0 +1,571 @@
+import { invoke } from '@tauri-apps/api/core';
+import './styles.css';
+
+type FileChange = {
+  path: string;
+  kind: 'modified' | 'added' | 'deleted';
+  additions: number;
+  deletions: number;
+  diff: string[];
+  restored?: boolean;
+};
+
+type Checkpoint = {
+  id: string;
+  intent: string;
+  detail: string;
+  createdAt: string;
+  commands: string[];
+  files: FileChange[];
+  checks: string;
+  checkPassed: boolean;
+  safety?: boolean;
+};
+
+declare global {
+  interface Window { __TAURI_INTERNALS__?: unknown }
+}
+
+const app = document.querySelector<HTMLDivElement>('#app')!;
+const product = 'Change Recovery Ledger';
+const slug = 'agent-change-recovery';
+const demoKey = 'demo:agent-change-recovery:ledger';
+const licenseKey = `sb_license:${slug}`;
+const verifyKey = `sb_license_verdict:${slug}`;
+const releasePage = 'https://github.com/B-Divyesh/sf-agent-change-recovery/releases';
+let activeCheckpoint = 'cp-3';
+let selectedFiles = new Set<string>(['src/auth/session.ts']);
+let toastTimer = 0;
+let realProjectPath = '';
+let realLedger: Checkpoint[] = [];
+
+const sample: Checkpoint[] = [
+  {
+    id: 'cp-1',
+    intent: 'Add session expiry warnings',
+    detail: 'Warn signed-in users five minutes before their session ends.',
+    createdAt: '10:42',
+    commands: ['npm test -- session', 'npm run lint'],
+    checks: '42 tests passed',
+    checkPassed: true,
+    files: [
+      { path: 'src/auth/expiry.ts', kind: 'added', additions: 61, deletions: 0, diff: ['+ export function minutesRemaining(expiry: number) {', '+   return Math.ceil((expiry - Date.now()) / 60_000)', '+ }'] },
+      { path: 'src/ui/SessionWarning.tsx', kind: 'added', additions: 44, deletions: 0, diff: ['+ export function SessionWarning() {', '+   return <aside role="status">Session ends soon</aside>', '+ }'] }
+    ]
+  },
+  {
+    id: 'cp-2',
+    intent: 'Keep draft after sign-in',
+    detail: 'Preserve the editor draft while the user renews a session.',
+    createdAt: '11:08',
+    commands: ['npm test -- draft', 'git diff --stat'],
+    checks: '47 tests passed',
+    checkPassed: true,
+    files: [
+      { path: 'src/editor/draft.ts', kind: 'modified', additions: 18, deletions: 7, diff: ['- sessionStorage.removeItem(DRAFT_KEY)', '+ if (reason !== "renewal") {', '+   sessionStorage.removeItem(DRAFT_KEY)', '+ }'] },
+      { path: 'tests/draft.test.ts', kind: 'modified', additions: 26, deletions: 2, diff: ['+ it("keeps a draft during renewal", () => {', '+   expect(loadDraft()).toEqual(savedDraft)', '+ })'] }
+    ]
+  },
+  {
+    id: 'cp-3',
+    intent: 'Refactor session refresh',
+    detail: 'Share refresh logic across the editor and account screens. The session file caused two failures.',
+    createdAt: '11:31',
+    commands: ['npm test -- session', 'npm test -- editor', 'npm run typecheck'],
+    checks: '2 of 51 tests failed',
+    checkPassed: false,
+    files: [
+      { path: 'src/auth/session.ts', kind: 'modified', additions: 38, deletions: 19, diff: ['- const token = await renewOnce()', '+ const token = refreshQueue.current', '+   ?? renewOnce()', '- refreshQueue.current = null', '+ return token.value'] },
+      { path: 'src/editor/autosave.ts', kind: 'modified', additions: 11, deletions: 4, diff: ['- await ensureSession()', '+ await session.refresh()', '+ scheduleNextSave()'] },
+      { path: 'src/account/profile.ts', kind: 'modified', additions: 9, deletions: 3, diff: ['- renewSession()', '+ session.refresh({ source: "profile" })'] },
+      { path: 'src/auth/refresh-queue.ts', kind: 'added', additions: 72, deletions: 0, diff: ['+ export class RefreshQueue {', '+   current?: Promise<Token>', '+ }'] }
+    ]
+  },
+  {
+    id: 'cp-4',
+    intent: 'Update account help text',
+    detail: 'Clarify where users can end other active sessions.',
+    createdAt: '11:44',
+    commands: ['npm test -- account'],
+    checks: '8 tests passed',
+    checkPassed: true,
+    files: [
+      { path: 'src/account/SecurityHelp.tsx', kind: 'modified', additions: 3, deletions: 3, diff: ['- End sessions in account settings.', '+ Open Security, then choose Active sessions.', '+ Select End session beside a device.'] }
+    ]
+  }
+];
+
+const routeMeta: Record<string, { title: string; description: string }> = {
+  '/': { title: 'Change Recovery Ledger — Reverse agent changes', description: 'Inspect, reverse, and replay selected agent changes without losing unrelated work.' },
+  '/demo': { title: 'Demo — Change Recovery Ledger', description: 'Try selective agent change recovery with isolated sample data.' },
+  '/app': { title: 'Ledger — Change Recovery Ledger', description: 'Capture and inspect local project checkpoints.' },
+  '/privacy': { title: 'Privacy — Change Recovery Ledger', description: 'How Change Recovery Ledger handles local project data and licenses.' },
+  '/terms': { title: 'Terms — Change Recovery Ledger', description: 'Terms for using Change Recovery Ledger.' },
+  '/404': { title: 'Not found — Change Recovery Ledger', description: 'This recovery sheet could not be found.' }
+};
+
+function currentPath() {
+  const path = location.pathname.replace(/\/$/, '') || '/';
+  return routeMeta[path] ? path : '/404';
+}
+
+function header() {
+  return `
+    <div class="offline-notice" role="status">You are offline. Saved ledgers and the demo still work.</div>
+    <header class="site-header">
+      <a class="brand" href="/" data-route><span class="brand-mark" aria-hidden="true"></span><span>Change Recovery Ledger</span></a>
+      <button class="mobile-menu" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+      <nav class="site-nav" id="site-nav" aria-label="Main navigation">
+        <a href="/demo" data-route>Demo</a>
+        <a href="/app" data-route>Open ledger</a>
+        <a href="/#how">How it works</a>
+        <a href="/privacy" data-route>Privacy</a>
+      </nav>
+    </header>`;
+}
+
+function footer() {
+  return `
+    <footer class="site-footer">
+      <div><strong>Change Recovery Ledger</strong><p class="muted">Reverse selected agent changes without losing the rest.</p><small>Original generated artwork · v0.1.0 · build 2026.08.28</small></div>
+      <nav class="footer-links" aria-label="Footer navigation"><a href="/privacy" data-route>Privacy</a><a href="/terms" data-route>Terms</a><a href="https://www.sociobot.in" rel="external">Built by Param Factory<span class="sr-only"> (external site)</span></a></nav>
+    </footer>`;
+}
+
+function previewMarkup() {
+  return `
+    <div class="preview-window" aria-label="Loaded recovery ledger preview">
+      <div class="window-bar"><span>ACME-WEB / 4 CHECKPOINTS</span><span>LOCAL</span></div>
+      <div class="window-body">
+        <div class="operation-list">
+          <button class="operation-card"><strong>Keep draft after sign-in</strong><span>2 files · 11:08</span></button>
+          <button class="operation-card" aria-current="true"><strong>Refactor session refresh</strong><span>4 files · 11:31</span></button>
+          <button class="operation-card"><strong>Update account help text</strong><span>1 file · 11:44</span></button>
+        </div>
+        <div class="preview-detail">
+          <div class="status-line"><strong>src/auth/session.ts</strong><span class="chip warn">2 tests failed</span></div>
+          <div class="diff" aria-label="Text version of the selected change">
+            <div class="diff-line remove">- const token = await renewOnce()</div>
+            <div class="diff-line add">+ const token = refreshQueue.current</div>
+            <div class="diff-line add">+   ?? renewOnce()</div>
+            <div class="diff-line remove">- refreshQueue.current = null</div>
+            <div class="diff-line add">+ return token.value</div>
+          </div>
+          <p class="notice"><strong>Selected recovery:</strong> reverse this file and keep the other three.</p>
+          <a class="button small" href="/demo" data-route>Try this recovery</a>
+        </div>
+      </div>
+    </div>`;
+}
+
+function landing() {
+  return `${header()}<main id="main" tabindex="-1">
+    <section class="hero sheet">
+      <div class="hero-copy">
+        <h1>Reverse the wrong agent changes</h1>
+        <p class="lede">For developers supervising long agent sessions who need to recover one change without discarding the rest.</p>
+        <div class="hero-actions"><a class="button" href="/demo" data-route>Try it with sample data</a><span class="action-note">A loaded ledger opens next. Nothing is saved to your data.</span></div>
+        <ul class="facts"><li>Project files stay on this device.</li><li>The demo works offline after one visit.</li><li>Free for 7 checkpoints. Pro costs $15 per developer each month.</li></ul>
+      </div>
+      <figure class="hero-art"><img src="/assets/hero-ledger.webp" srcset="/assets/hero-ledger-600.webp 600w, /assets/hero-ledger.webp 1200w" sizes="(max-width: 850px) calc(100vw - 32px), 52vw" width="1200" height="800" alt="A paper code ledger where one faulty strip is lifted while the others stay pinned." fetchpriority="high" decoding="async"><figcaption class="art-caption">SELECT ONE STRIP / KEEP THE REST</figcaption></figure>
+    </section>
+    <section class="section section-blue"><div class="sheet split"><div><p class="eyebrow">The ledger, loaded</p><h2>Inspect an agent turn before reversing it</h2><p class="max-text">Each checkpoint keeps the intent, command trail, file group, and check result together.</p></div>${previewMarkup()}</div></section>
+    <section class="section" id="how"><div class="sheet split"><div><p class="eyebrow">How it works</p><h2>Recover in three deliberate steps</h2></div><ol class="steps"><li><div><h3>Capture the turn</h3><p>Write the agent’s intent and commands. The desktop app records the project files.</p></div></li><li><div><h3>Inspect the file group</h3><p>Compare the checkpoint with the current folder. Select only the files that went wrong.</p></div></li><li><div><h3>Reverse or export</h3><p>Create a safety checkpoint, restore selected files, or export a patch for review. Patches never run themselves.</p></div></li></ol></div></section>
+    <section class="section walkthrough"><div class="sheet"><p class="eyebrow">Desktop walkthrough</p><h2>See one file recover safely</h2><ol class="walkthrough-grid"><li><img src="/assets/walkthrough-1.webp" width="900" height="620" loading="lazy" decoding="async" alt="The sample ledger with one failed session file selected."><strong>1 / Select the suspect file</strong></li><li><img src="/assets/walkthrough-2.webp" width="900" height="426" loading="lazy" decoding="async" alt="A confirmation names the selected files and safety checkpoint."><strong>2 / Confirm the safety checkpoint</strong></li><li><img src="/assets/walkthrough-3.webp" width="900" height="618" loading="lazy" decoding="async" alt="The ledger shows restored files and a new safety checkpoint."><strong>3 / Keep the recovery record</strong></li></ol></div></section>
+    <section class="section"><div class="sheet split"><div><p class="eyebrow">A local sidecar</p><h2>It does not replace Git</h2></div><div class="max-text"><p>The ledger does not commit, reset, rebase, or alter Git history. It watches only a folder you choose.</p><p>Checkpoint files can contain secrets. They stay in the desktop app’s local data folder. Delete a ledger when you no longer need it.</p><p>The demo uses a separate <code>demo:</code> browser storage key. Leaving the demo does not copy its data.</p></div></div></section>
+    <section class="section section-ink" id="pro"><div class="sheet price-strip"><div><p class="eyebrow">Pro recovery</p><h2>Keep longer histories</h2><p>Pro adds longer history, configurable retention, and passphrase-encrypted recovery export.</p><p class="price">$15 <small>/ developer / month</small></p><div class="license-form"><label for="license">Have a license?<span class="sr-only">Paste license token</span><input id="license" autocomplete="off" spellcheck="false" placeholder="Paste license token"></label><button class="secondary" id="restore-license" type="button">Verify license</button></div><p id="license-status" aria-live="polite"></p></div><div><a class="button" href="https://api.sociobot.in/api/v1/products/agent-change-recovery/checkout">Buy Pro</a><p><small>Sociobot is the merchant of record.<br>See <a href="/terms" data-route>terms</a> and <a href="/privacy" data-route>privacy</a>.</small></p></div></div></section>
+    <section class="section"><div class="sheet split"><div><p class="eyebrow">Desktop app</p><h2>Choose the build for your computer</h2><p class="max-text">Release files are unsigned in v0.1. Your system may ask you to confirm before opening them.</p></div><div><a class="button blue" id="download-button" href="${releasePage}">View available downloads</a><p id="download-status" class="muted">Checking published releases…</p></div></div></section>
+  </main>${footer()}`;
+}
+
+function getDemoLedger(): Checkpoint[] {
+  try {
+    const stored = localStorage.getItem(demoKey);
+    return stored ? JSON.parse(stored) as Checkpoint[] : structuredClone(sample);
+  } catch { return structuredClone(sample); }
+}
+
+function saveDemoLedger(ledger: Checkpoint[]) {
+  localStorage.setItem(demoKey, JSON.stringify(ledger));
+}
+
+function demoBanner() {
+  return `<aside class="demo-banner" aria-label="Demo mode"><p>Demo — sample data, nothing is saved</p><div class="banner-actions"><button class="small secondary" id="reset-demo" type="button">Reset demo</button><a class="button small blue" href="/app" data-route>Start for real</a></div></aside>`;
+}
+
+function operationButtons(ledger: Checkpoint[]) {
+  return ledger.map(item => `<button class="operation-card" type="button" data-checkpoint="${item.id}" aria-current="${item.id === activeCheckpoint}"><strong>${escapeHtml(item.intent)}</strong><span>${item.files.length} ${item.files.length === 1 ? 'file' : 'files'} · ${item.createdAt}${item.safety ? ' · safety' : ''}</span></button>`).join('');
+}
+
+function ledgerMarkup(ledger: Checkpoint[], demo = true) {
+  const cp = ledger.find(item => item.id === activeCheckpoint) ?? ledger.at(-1);
+  if (!cp) return `<div class="empty-state"><div class="empty-mark" aria-hidden="true">＋</div><h2>No checkpoints yet</h2><p>Capture an agent turn to record its intent, commands, and files here.</p></div>`;
+  activeCheckpoint = cp.id;
+  return `<div class="ledger">
+    <aside class="ledger-sidebar" aria-label="Checkpoints"><div class="ledger-sidebar-header"><h2>Checkpoint ledger</h2></div><div class="operation-list">${operationButtons(ledger)}</div></aside>
+    <section class="ledger-detail" aria-labelledby="checkpoint-title"><div class="ledger-detail-header"><div><p class="eyebrow">${cp.createdAt} / ${cp.files.length} files</p><h2 id="checkpoint-title">${escapeHtml(cp.intent)}</h2></div><span class="chip ${cp.checkPassed ? 'pass' : 'warn'}">${escapeHtml(cp.checks)}</span></div>
+      <div class="intent"><p class="eyebrow">Recorded intent</p><p>${escapeHtml(cp.detail)}</p></div>
+      <table class="file-table"><thead><tr><th scope="col">Select file</th><th scope="col">Change</th><th scope="col">Lines</th></tr></thead><tbody>${cp.files.map(file => `<tr><td><label class="file-check"><input type="checkbox" data-file="${escapeHtml(file.path)}" ${selectedFiles.has(file.path) ? 'checked' : ''} ${file.restored ? 'disabled' : ''}><span>${escapeHtml(file.path)}${file.restored ? ' — restored' : ''}</span></label></td><td>${file.kind}</td><td><span class="change-add">+${file.additions}</span> <span class="change-remove">−${file.deletions}</span></td></tr>`).join('')}</tbody></table>
+      <details class="intent"><summary>Read selected file diff</summary><div class="diff">${(cp.files.find(f => selectedFiles.has(f.path)) ?? cp.files[0])?.diff.map(line => `<div class="diff-line ${line.startsWith('+') ? 'add' : line.startsWith('-') ? 'remove' : ''}">${escapeHtml(line)}</div>`).join('') ?? ''}</div></details>
+      <div class="command-trail" aria-label="Command trail"><strong>Command trail</strong>${cp.commands.map(cmd => `<code>$ ${escapeHtml(cmd)}</code>`).join('')}</div>
+      <div class="ledger-actions"><button class="primary" id="restore-selected" type="button" ${selectedFiles.size ? '' : 'disabled'}>Reverse ${selectedFiles.size || ''} selected ${selectedFiles.size === 1 ? 'file' : 'files'}</button><button class="secondary" id="export-patch" type="button" ${selectedFiles.size ? '' : 'disabled'}>Export selected patch</button>${!demo && hasPro() ? `<button class="secondary" id="encrypted-export" type="button" ${selectedFiles.size ? '' : 'disabled'}>Export encrypted recovery</button>` : ''}<button class="secondary" id="select-all" type="button">Select all files</button>${demo ? '' : '<button class="secondary" id="refresh-checkpoint" type="button">Compare with folder</button>'}</div>
+    </section></div>`;
+}
+
+function demoPage() {
+  const ledger = getDemoLedger();
+  if (!ledger.find(item => item.id === activeCheckpoint)) activeCheckpoint = ledger[0]?.id ?? '';
+  return `${header()}${demoBanner()}<main id="main" tabindex="-1" class="app-shell"><div class="app-heading"><div><p class="eyebrow">Sample project / acme-web</p><h1>Inspect the failed session change</h1></div><span class="chip warn">2 tests need attention</span></div>${ledgerMarkup(ledger)}</main>${footer()}`;
+}
+
+function realAppPage() {
+  const desktop = Boolean(window.__TAURI_INTERNALS__);
+  return `${header()}<main id="main" tabindex="-1" class="app-shell"><div class="app-heading"><div><p class="eyebrow">Local project</p><h1>Capture an agent turn</h1></div><span class="chip ${desktop ? 'pass' : 'warn'}">${desktop ? 'Desktop ready' : 'Browser preview'}</span></div>
+    <section class="capture-panel" aria-labelledby="capture-title"><h2 id="capture-title">New checkpoint</h2>${desktop ? '' : '<p class="notice">Folder access starts in the desktop app. You can still use the isolated demo in this browser.</p>'}<form id="capture-form" class="capture-grid"><label>Project folder<input id="project-path" name="path" required placeholder="/Users/me/project" ${desktop ? '' : 'disabled'}><span class="field-help">Type the full path to one local project.</span></label><label>Agent intent<input id="checkpoint-intent" name="intent" required placeholder="Fix session refresh race" ${desktop ? '' : 'disabled'}><span class="field-help">Describe the requested result.</span></label><label>Commands<textarea id="checkpoint-commands" name="commands" rows="2" placeholder="npm test" ${desktop ? '' : 'disabled'}></textarea></label>${hasPro() ? '<label>Keep checkpoints<select name="retention"><option value="30">Last 30</option><option value="90" selected>Last 90</option><option value="0">All</option></select></label>' : ''}<button class="primary" type="submit" ${desktop ? '' : 'disabled'}>Capture checkpoint</button></form></section>
+    <div id="real-ledger">${desktop ? '<div class="empty-state"><div class="empty-mark" aria-hidden="true">＋</div><h2>No project loaded</h2><p>Capture an agent turn. Its file group and commands will appear here.</p></div>' : '<div class="empty-state"><div class="empty-mark" aria-hidden="true">⌁</div><h2>Open the desktop app</h2><p>The browser cannot read project folders. Download the app or inspect the sample ledger.</p><a class="button" href="/demo" data-route>Try it with sample data</a></div>'}</div>
+  </main>${footer()}`;
+}
+
+function legalPage(kind: 'privacy' | 'terms') {
+  const privacy = `<p><strong>Effective 28 August 2026.</strong></p><h2>Project data stays local</h2><p>The desktop app reads only the project folder you enter. It stores checkpoints in its local application data folder. It does not send project files, patches, commands, or intent notes to us.</p><h2>Demo data is separate</h2><p>The browser demo stores its sample state under <code>${demoKey}</code>. Resetting or leaving the demo removes that state.</p><h2>License checks</h2><p>If you add a Pro license, the app sends that token to <code>api.sociobot.in</code> to check whether it is active. It stores the token and latest result on this device.</p><h2>Downloads</h2><p>The landing page asks the GitHub API for the latest public release. GitHub receives normal request data, including your IP address.</p><h2>Delete your data</h2><p>Delete a project ledger in the desktop app. You can also clear this site’s browser storage. Contact <a href="mailto:privacy@sociobot.in">privacy@sociobot.in</a> with privacy questions.</p>`;
+  const terms = `<p><strong>Effective 28 August 2026.</strong></p><h2>Use of the app</h2><p>You may use the app to checkpoint folders you are allowed to access. Review every restoration and patch before relying on it.</p><h2>Git and backups</h2><p>The app is not Git and is not a full backup service. Keep normal version control and backups. The app does not change Git history.</p><h2>Pro plan</h2><p>Pro costs $15 per developer each month. It adds longer history, configurable retention, and passphrase-encrypted recovery export while the license is active. Sociobot is the merchant of record. Refunds and cancellations are handled through its checkout service.</p><h2>Warranty</h2><p>The software is provided under the MIT License, without warranty. You are responsible for reviewing restored files and exported patches.</p><h2>Contact</h2><p>Send terms questions to <a href="mailto:support@sociobot.in">support@sociobot.in</a>.</p>`;
+  const title = kind === 'privacy' ? 'Read the privacy policy' : 'Read the terms of use';
+  return `${header()}<main id="main" tabindex="-1" class="sheet legal"><article><p class="eyebrow">${kind}</p><h1>${title}</h1>${kind === 'privacy' ? privacy : terms}</article></main>${footer()}`;
+}
+
+function notFound() {
+  return `${header()}<main id="main" tabindex="-1" class="not-found sheet"><div><div class="code" aria-hidden="true">404</div><h1>This recovery sheet is missing</h1><p>The address may be wrong. Return to the ledger start page.</p><a class="button" href="/" data-route>Return home</a></div></main>${footer()}`;
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]!);
+}
+
+function render(focus = false) {
+  const path = currentPath();
+  const meta = routeMeta[path];
+  document.title = meta.title;
+  document.querySelector<HTMLMetaElement>('meta[name="description"]')?.setAttribute('content', meta.description);
+  document.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.setAttribute('href', `https://agent-change-recovery.sociobot.in${path === '/' ? '/' : path}`);
+  app.innerHTML = path === '/' ? landing() : path === '/demo' ? demoPage() : path === '/app' ? realAppPage() : path === '/privacy' ? legalPage('privacy') : path === '/terms' ? legalPage('terms') : notFound();
+  document.querySelector('h1')?.setAttribute('tabindex', '-1');
+  document.body.classList.toggle('offline', !navigator.onLine);
+  if (focus) {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    document.querySelector<HTMLElement>('h1')?.focus({ preventScroll: true });
+  }
+  if (path === '/') void resolveDownload();
+  announce(document.querySelector('h1')?.textContent ?? product);
+}
+
+function navigate(path: string) {
+  history.pushState({}, '', path);
+  render(true);
+}
+
+function announce(message: string) {
+  let region = document.querySelector<HTMLDivElement>('#route-announcer');
+  if (!region) {
+    region = document.createElement('div');
+    region.id = 'route-announcer';
+    region.className = 'sr-only';
+    region.setAttribute('aria-live', 'polite');
+    document.body.append(region);
+  }
+  region.textContent = message;
+}
+
+function showToast(message: string) {
+  document.querySelector('.toast')?.remove();
+  const node = document.createElement('div');
+  node.className = 'toast';
+  node.setAttribute('role', 'status');
+  node.textContent = message;
+  document.body.append(node);
+  window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => node.remove(), 5000);
+}
+
+function openRestoreDialog() {
+  const count = selectedFiles.size;
+  if (!count) return;
+  const backdrop = document.createElement('div');
+  backdrop.className = 'dialog-backdrop';
+  backdrop.innerHTML = `<div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title" aria-describedby="dialog-copy"><h2 id="dialog-title">Reverse ${count} selected ${count === 1 ? 'file' : 'files'}?</h2><p id="dialog-copy">The ledger creates a safety checkpoint first. Other files in this agent turn stay unchanged.</p><div class="dialog-actions"><button class="secondary" id="cancel-restore" type="button">Keep files</button><button class="primary" id="confirm-restore" type="button">Create checkpoint and reverse</button></div></div>`;
+  document.body.append(backdrop);
+  backdrop.querySelector<HTMLButtonElement>('#cancel-restore')?.focus();
+}
+
+function completeDemoRestore() {
+  const ledger = getDemoLedger();
+  const source = ledger.find(item => item.id === activeCheckpoint);
+  if (!source) return;
+  const paths = [...selectedFiles];
+  source.files.forEach(file => { if (selectedFiles.has(file.path)) file.restored = true; });
+  ledger.push({ id: `safe-${Date.now()}`, intent: 'Safety checkpoint before reversal', detail: `Saved the current state before reversing ${paths.length} selected ${paths.length === 1 ? 'file' : 'files'}.`, createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), commands: ['No commands run'], checks: 'Safety copy created', checkPassed: true, safety: true, files: source.files.filter(file => paths.includes(file.path)).map(file => ({ ...file, restored: false })) });
+  saveDemoLedger(ledger);
+  selectedFiles.clear();
+  document.querySelector('.dialog-backdrop')?.remove();
+  render();
+  showToast(`${paths.length} ${paths.length === 1 ? 'file was' : 'files were'} reversed. The safety checkpoint is in the ledger.`);
+}
+
+async function completeRestore() {
+  if (currentPath() === '/demo') {
+    completeDemoRestore();
+    return;
+  }
+  const paths = [...selectedFiles];
+  if (!realProjectPath || !paths.length) return;
+  const confirm = document.querySelector<HTMLButtonElement>('#confirm-restore');
+  if (confirm) { confirm.disabled = true; confirm.textContent = 'Creating safety checkpoint…'; }
+  try {
+    realLedger = await invoke<Checkpoint[]>('restore_files', { path: realProjectPath, checkpointId: activeCheckpoint, files: paths });
+    activeCheckpoint = realLedger.at(-1)?.id ?? activeCheckpoint;
+    selectedFiles.clear();
+    document.querySelector('.dialog-backdrop')?.remove();
+    refreshLedgerView();
+    showToast(`${paths.length} ${paths.length === 1 ? 'file was' : 'files were'} reversed. A safety checkpoint was created first.`);
+  } catch (error) {
+    document.querySelector('.dialog-backdrop')?.remove();
+    showToast(`The files were not reversed. ${String(error)}`);
+  }
+}
+
+function exportPatch() {
+  if (currentPath() === '/app') {
+    void exportRealPatch();
+    return;
+  }
+  const ledger = getDemoLedger();
+  const cp = ledger.find(item => item.id === activeCheckpoint);
+  if (!cp) return;
+  const files = cp.files.filter(file => selectedFiles.has(file.path));
+  const patch = files.map(file => [`diff --git a/${file.path} b/${file.path}`, `--- a/${file.path}`, `+++ b/${file.path}`, '@@ selected checkpoint change @@', ...file.diff].join('\n')).join('\n\n') + '\n';
+  const url = URL.createObjectURL(new Blob([patch], { type: 'text/x-diff' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `recovery-${cp.id}.patch`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast(`Patch exported for ${files.length} selected ${files.length === 1 ? 'file' : 'files'}. Nothing was run.`);
+}
+
+async function exportRealPatch() {
+  try {
+    const target = await invoke<string>('export_patch', { path: realProjectPath, checkpointId: activeCheckpoint, files: [...selectedFiles] });
+    showToast(`The patch was saved to ${target}. Nothing was run.`);
+  } catch (error) {
+    showToast(`The patch was not exported. ${String(error)}`);
+  }
+}
+
+function openEncryptionDialog() {
+  const backdrop = document.createElement('div');
+  backdrop.className = 'dialog-backdrop';
+  backdrop.innerHTML = `<form class="dialog" id="encrypt-form" role="dialog" aria-modal="true" aria-labelledby="encrypt-title"><h2 id="encrypt-title">Encrypt this recovery</h2><p>The passphrase is not saved. You will need it to open the <code>.crl</code> file.</p><label for="export-passphrase">Passphrase<input id="export-passphrase" name="passphrase" type="password" minlength="12" required autocomplete="new-password"><span class="field-help">Use at least 12 characters.</span></label><div class="dialog-actions"><button class="secondary" id="cancel-encrypt" type="button">Cancel export</button><button class="primary" type="submit">Save encrypted recovery</button></div></form>`;
+  document.body.append(backdrop);
+  backdrop.querySelector<HTMLInputElement>('input')?.focus();
+}
+
+async function exportEncrypted(form: HTMLFormElement) {
+  const passphrase = String(new FormData(form).get('passphrase'));
+  const button = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+  button.disabled = true;
+  button.textContent = 'Encrypting recovery…';
+  try {
+    const target = await invoke<string>('export_encrypted', { path: realProjectPath, checkpointId: activeCheckpoint, files: [...selectedFiles], passphrase });
+    document.querySelector('.dialog-backdrop')?.remove();
+    showToast(`The encrypted recovery was saved to ${target}. The passphrase was not stored.`);
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = 'Save encrypted recovery';
+    showToast(`The encrypted recovery was not saved. ${String(error)}`);
+  }
+}
+
+async function captureCheckpoint(form: HTMLFormElement) {
+  const data = new FormData(form);
+  const button = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+  button.disabled = true;
+  button.textContent = 'Capturing files…';
+  try {
+    const result = await invoke<Checkpoint[]>('capture_checkpoint', {
+      path: String(data.get('path')),
+      intent: String(data.get('intent')),
+      commands: String(data.get('commands')).split('\n').filter(Boolean),
+      pro: hasPro(),
+      retention: Number(data.get('retention') ?? 7)
+    });
+    realProjectPath = String(data.get('path'));
+    realLedger = result;
+    activeCheckpoint = result.at(-1)?.id ?? '';
+    selectedFiles.clear();
+    refreshLedgerView();
+    showToast('Checkpoint captured in the local ledger.');
+  } catch (error) {
+    showToast(`The checkpoint was not captured. Check the folder path and try again. ${String(error)}`);
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Capture checkpoint';
+  }
+}
+
+function hasPro() {
+  try {
+    const verdict = JSON.parse(localStorage.getItem(verifyKey) ?? 'null') as { valid?: boolean; checkedAt?: number } | null;
+    return Boolean(localStorage.getItem(licenseKey) && verdict?.valid);
+  } catch { return false; }
+}
+
+function refreshCachedLicense() {
+  const token = localStorage.getItem(licenseKey);
+  if (!token) return;
+  try {
+    const verdict = JSON.parse(localStorage.getItem(verifyKey) ?? 'null') as { checkedAt?: number } | null;
+    if (!verdict?.checkedAt || Date.now() - verdict.checkedAt > 86_400_000) void verifyLicense(token);
+  } catch { void verifyLicense(token); }
+}
+
+function refreshLedgerView() {
+  const container = document.querySelector<HTMLDivElement>('#real-ledger');
+  if (container) container.innerHTML = ledgerMarkup(realLedger, false);
+}
+
+async function verifyLicense(token: string) {
+  const status = document.querySelector<HTMLElement>('#license-status');
+  if (status) status.textContent = 'Checking this license…';
+  try {
+    const response = await fetch(`https://api.sociobot.in/api/v1/products/${slug}/verify?license=${encodeURIComponent(token)}`);
+    if (!response.ok) throw new Error('The license service did not respond.');
+    const verdict = await response.json() as { valid: boolean; reason: string; expires_at?: string };
+    localStorage.setItem(verifyKey, JSON.stringify({ ...verdict, checkedAt: Date.now() }));
+    if (verdict.valid) {
+      localStorage.setItem(licenseKey, token);
+      if (status) status.textContent = 'License active. Pro history and encrypted export are ready in the desktop app.';
+    } else {
+      localStorage.removeItem(licenseKey);
+      if (status) status.textContent = 'This license is no longer active. Check the token or buy Pro.';
+    }
+  } catch {
+    if (status) status.textContent = 'The license could not be checked. Your free ledger still works. Try again when online.';
+  }
+}
+
+function acceptLicenseFromUrl() {
+  const url = new URL(location.href);
+  const token = url.searchParams.get('license');
+  if (!token) return;
+  localStorage.setItem(licenseKey, token);
+  url.searchParams.delete('license');
+  history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+  void verifyLicense(token);
+}
+
+async function resolveDownload() {
+  const button = document.querySelector<HTMLAnchorElement>('#download-button');
+  const status = document.querySelector<HTMLElement>('#download-status');
+  if (!button || !status) return;
+  const os = /Win/i.test(navigator.userAgent) ? 'Windows' : /Mac/i.test(navigator.userAgent) ? 'macOS' : 'Linux';
+  const patterns = os === 'Windows' ? [/\.msi$/i, /\.exe$/i] : os === 'macOS' ? [/\.dmg$/i, /\.app\.tar\.gz$/i] : [/\.AppImage$/i, /\.deb$/i];
+  try {
+    const cacheRaw = localStorage.getItem('release:agent-change-recovery');
+    const cache = cacheRaw ? JSON.parse(cacheRaw) as { saved: number; value: Release } : null;
+    let release: Release;
+    if (cache && Date.now() - cache.saved < 3_600_000) release = cache.value;
+    else {
+      const response = await fetch('https://api.github.com/repos/B-Divyesh/sf-agent-change-recovery/releases/latest');
+      if (!response.ok) throw new Error('No published release');
+      release = await response.json() as Release;
+      localStorage.setItem('release:agent-change-recovery', JSON.stringify({ saved: Date.now(), value: release }));
+    }
+    const asset = release.assets.find(item => patterns.some(pattern => pattern.test(item.name)));
+    if (!asset) throw new Error('Platform build pending');
+    button.href = asset.browser_download_url;
+    button.textContent = `Download for ${os}`;
+    status.textContent = `${release.tag_name} · ${asset.name}`;
+  } catch {
+    button.href = releasePage;
+    button.textContent = 'View release page';
+    status.textContent = `The ${os} download is being published. The release page shows current files.`;
+  }
+}
+
+type Release = { tag_name: string; assets: { name: string; browser_download_url: string }[] };
+
+document.addEventListener('click', event => {
+  const target = event.target as HTMLElement;
+  const route = target.closest<HTMLAnchorElement>('a[data-route]');
+  if (route && route.origin === location.origin) {
+    event.preventDefault();
+    navigate(route.pathname + route.hash);
+    return;
+  }
+  if (target.closest('.mobile-menu')) {
+    const button = target.closest<HTMLButtonElement>('.mobile-menu')!;
+    const nav = document.querySelector('.site-nav');
+    const open = nav?.classList.toggle('open') ?? false;
+    button.setAttribute('aria-expanded', String(open));
+  }
+  const checkpoint = target.closest<HTMLButtonElement>('[data-checkpoint]');
+  if (checkpoint) {
+    activeCheckpoint = checkpoint.dataset.checkpoint!;
+    selectedFiles.clear();
+    if (currentPath() === '/app') refreshLedgerView(); else render();
+  }
+  if (target.closest('#reset-demo')) {
+    localStorage.removeItem(demoKey);
+    activeCheckpoint = 'cp-3';
+    selectedFiles = new Set(['src/auth/session.ts']);
+    render();
+    showToast('The sample ledger was reset.');
+  }
+  if (target.closest('#select-all')) {
+    const ledger = currentPath() === '/demo' ? getDemoLedger() : realLedger;
+    const cp = ledger.find(item => item.id === activeCheckpoint);
+    selectedFiles = new Set(cp?.files.filter(file => !file.restored).map(file => file.path) ?? []);
+    if (currentPath() === '/app') refreshLedgerView(); else render();
+  }
+  if (target.closest('#restore-selected')) openRestoreDialog();
+  if (target.closest('#cancel-restore')) document.querySelector('.dialog-backdrop')?.remove();
+  if (target.classList.contains('dialog-backdrop')) target.remove();
+  if (target.closest('#confirm-restore')) void completeRestore();
+  if (target.closest('#export-patch')) exportPatch();
+  if (target.closest('#encrypted-export')) openEncryptionDialog();
+  if (target.closest('#cancel-encrypt')) document.querySelector('.dialog-backdrop')?.remove();
+  if (target.closest('#restore-license')) {
+    const token = document.querySelector<HTMLInputElement>('#license')?.value.trim();
+    if (token) void verifyLicense(token);
+    else document.querySelector<HTMLElement>('#license-status')!.textContent = 'Paste a license token, then verify it.';
+  }
+});
+
+document.addEventListener('change', event => {
+  const input = (event.target as HTMLElement).closest<HTMLInputElement>('input[data-file]');
+  if (!input) return;
+  if (input.checked) selectedFiles.add(input.dataset.file!); else selectedFiles.delete(input.dataset.file!);
+  if (currentPath() === '/app') refreshLedgerView(); else render();
+});
+
+document.addEventListener('submit', event => {
+  const form = (event.target as HTMLElement).closest<HTMLFormElement>('#capture-form');
+  const encryptForm = (event.target as HTMLElement).closest<HTMLFormElement>('#encrypt-form');
+  if (form) { event.preventDefault(); void captureCheckpoint(form); }
+  if (encryptForm) { event.preventDefault(); void exportEncrypted(encryptForm); }
+});
+
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape') document.querySelector('.dialog-backdrop')?.remove();
+});
+
+window.addEventListener('popstate', () => render(true));
+window.addEventListener('online', () => document.body.classList.remove('offline'));
+window.addEventListener('offline', () => document.body.classList.add('offline'));
+
+acceptLicenseFromUrl();
+render();
+refreshCachedLicense();
+
+if ('serviceWorker' in navigator && !window.__TAURI_INTERNALS__) {
+  window.addEventListener('load', () => { void navigator.serviceWorker.register('/sw.js').catch(() => undefined); });
+}
