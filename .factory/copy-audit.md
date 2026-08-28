@@ -30,8 +30,8 @@ Checked 2026-08-28. Counts treat contractions and possessives as one word. Headi
 | Confirm the safety checkpoint | 4 |
 | Keep the recovery record | 4 |
 | It does not replace Git | 5 |
-| The ledger does not commit, reset, rebase, or alter Git history. | 10 |
-| It watches only a folder you choose. | 7 |
+| The ledger leaves Git data out of its checkpoints. | 9 |
+| It records the folder you choose. | 6 |
 | Checkpoint files can contain secrets. | 5 |
 | They stay in the desktop app’s local data folder. | 9 |
 | Delete a ledger when you no longer need it. | 9 |

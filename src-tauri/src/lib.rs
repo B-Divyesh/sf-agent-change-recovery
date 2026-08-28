@@ -404,22 +404,62 @@ fn patch_text(
     current: &BTreeMap<String, Vec<u8>>,
     files: &[String],
 ) -> String {
-    let selected = changes_between(previous, current)
-        .into_iter()
-        .filter(|change| files.contains(&change.path));
     let mut patch = String::new();
-    for change in selected {
+    for path in files {
+        let before = previous.get(path);
+        let after = current.get(path);
+        if before == after {
+            continue;
+        }
+        let old_lines = match before {
+            Some(bytes) => match patch_lines(bytes) {
+                Some(lines) => lines,
+                None => continue,
+            },
+            None => Vec::new(),
+        };
+        let new_lines = match after {
+            Some(bytes) => match patch_lines(bytes) {
+                Some(lines) => lines,
+                None => continue,
+            },
+            None => Vec::new(),
+        };
+        let old_start = if old_lines.is_empty() { 0 } else { 1 };
+        let new_start = if new_lines.is_empty() { 0 } else { 1 };
+        let old_path = if before.is_some() {
+            format!("a/{path}")
+        } else {
+            "/dev/null".into()
+        };
+        let new_path = if after.is_some() {
+            format!("b/{path}")
+        } else {
+            "/dev/null".into()
+        };
         patch.push_str(&format!(
-            "diff --git a/{0} b/{0}\n--- a/{0}\n+++ b/{0}\n@@ checkpoint change @@\n",
-            change.path
+            "diff --git a/{path} b/{path}\n--- {old_path}\n+++ {new_path}\n@@ -{old_start},{} +{new_start},{} @@\n",
+            old_lines.len(),
+            new_lines.len()
         ));
-        for line in change.diff {
+        for line in old_lines {
+            patch.push('-');
+            patch.push_str(&line);
+            patch.push('\n');
+        }
+        for line in new_lines {
+            patch.push('+');
             patch.push_str(&line);
             patch.push('\n');
         }
         patch.push('\n');
     }
     patch
+}
+
+fn patch_lines(bytes: &[u8]) -> Option<Vec<String>> {
+    let text = std::str::from_utf8(bytes).ok()?;
+    Some(text.lines().map(str::to_owned).collect())
 }
 
 fn encrypt_bytes(content: &[u8], passphrase: &str) -> Result<Vec<u8>, String> {
@@ -497,6 +537,10 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::{
+        io::Write,
+        process::{Command, Stdio},
+    };
 
     #[test]
     fn ignores_generated_folders() {
@@ -543,5 +587,81 @@ mod tests {
         let output = encrypt_bytes(b"diff --git secret", "correct horse battery staple").unwrap();
         assert_eq!(&output[..4], b"CRL1");
         assert!(!output.windows(6).any(|window| window == b"secret"));
+    }
+
+    #[test]
+    fn patch_export_is_standard_unified_diff_and_dry_runs() {
+        let root = tempfile::tempdir().unwrap();
+        fs::create_dir_all(root.path().join("src/auth")).unwrap();
+        fs::write(
+            root.path().join("src/auth/session.ts"),
+            "const old = true\n",
+        )
+        .unwrap();
+        let previous =
+            BTreeMap::from([("src/auth/session.ts".into(), b"const old = true\n".to_vec())]);
+        let current = BTreeMap::from([(
+            "src/auth/session.ts".into(),
+            b"const current = true\nconst queued = false\n".to_vec(),
+        )]);
+        let patch = patch_text(&previous, &current, &["src/auth/session.ts".into()]);
+        assert!(patch.contains("@@ -1,1 +1,2 @@"));
+        let mut child = Command::new("patch")
+            .args(["--batch", "--dry-run", "-p1", "-d"])
+            .arg(root.path())
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("patch must be installed for the patch export regression test");
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(patch.as_bytes())
+            .unwrap();
+        let output = child.wait_with_output().unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    #[test]
+    fn project_files_stay_within_the_chosen_folder() {
+        let root = tempfile::tempdir().unwrap();
+        let chosen = root.path().join("chosen");
+        fs::create_dir_all(&chosen).unwrap();
+        fs::write(chosen.join("inside.txt"), "keep").unwrap();
+        fs::write(root.path().join("outside.txt"), "do not read").unwrap();
+        let files = read_project(&chosen).unwrap();
+        assert_eq!(files.get("inside.txt"), Some(&b"keep".to_vec()));
+        assert!(!files.values().any(|content| content == b"do not read"));
+    }
+
+    #[test]
+    fn skips_files_larger_than_two_megabytes() {
+        let root = tempfile::tempdir().unwrap();
+        fs::write(root.path().join("small.txt"), "record").unwrap();
+        fs::write(
+            root.path().join("large.bin"),
+            vec![0_u8; MAX_FILE_BYTES as usize + 1],
+        )
+        .unwrap();
+        let files = read_project(root.path()).unwrap();
+        assert!(files.contains_key("small.txt"));
+        assert!(!files.contains_key("large.bin"));
+    }
+
+    #[test]
+    fn excludes_git_metadata_from_checkpoints() {
+        let root = tempfile::tempdir().unwrap();
+        fs::create_dir_all(root.path().join(".git")).unwrap();
+        fs::write(root.path().join(".git/HEAD"), "ref: refs/heads/main").unwrap();
+        fs::write(root.path().join("tracked.txt"), "project file").unwrap();
+        let files = read_project(root.path()).unwrap();
+        assert!(files.contains_key("tracked.txt"));
+        assert!(!files.keys().any(|path| path.starts_with(".git/")));
     }
 }

@@ -11,7 +11,7 @@
     "claim": "Export selected changes as a patch without running it.",
     "where": "landing how-it-works section and demo toolbar",
     "test": "npm test -- --grep @claim:patch-export",
-    "sandbox": "fresh browser context at /demo; download patch; verify selected path and diff content"
+    "sandbox": "fresh browser context at /demo; download a selected patch and run patch --dry-run -p1 against its matching fixture"
   },
   {
     "id": "demo-isolation",
@@ -24,8 +24,8 @@
     "id": "local-privacy",
     "claim": "Project files stay on this device.",
     "where": "landing facts and privacy page",
-    "test": "npm test -- --grep @claim:local-privacy",
-    "sandbox": "fresh browser context at /demo; record all recovery-flow requests; verify every request is same-origin"
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml project_files_stay_within_the_chosen_folder",
+    "sandbox": "native unit sandbox; capture a chosen fixture folder beside a sentinel outside it and assert only the chosen folder is read"
   },
   {
     "id": "offline-reload",
@@ -54,5 +54,33 @@
     "where": "landing paid tier and README",
     "test": "cargo test --manifest-path src-tauri/Cargo.toml encrypted_export_has_versioned_header_and_hides_plaintext",
     "sandbox": "native unit sandbox; encrypt fixture patch; assert versioned CRL header and no plaintext secret"
+  },
+  {
+    "id": "git-metadata-exclusion",
+    "claim": "Git metadata is excluded from checkpoints.",
+    "where": "landing local-sidecar section, terms, README",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml excludes_git_metadata_from_checkpoints",
+    "sandbox": "native unit sandbox; capture a fixture with .git/HEAD and assert no .git path is included"
+  },
+  {
+    "id": "chosen-folder-only",
+    "claim": "The ledger records the folder you choose.",
+    "where": "landing local-sidecar section and privacy page",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml project_files_stay_within_the_chosen_folder",
+    "sandbox": "native unit sandbox; capture a chosen fixture folder beside a sentinel outside it and assert only the chosen folder is read"
+  },
+  {
+    "id": "large-file-skip",
+    "claim": "Files over 2 MB are skipped.",
+    "where": "README desktop app instructions",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml skips_files_larger_than_two_megabytes",
+    "sandbox": "native unit sandbox; capture a small file and a 2 MB plus one byte fixture, then assert only the small file is recorded"
+  },
+  {
+    "id": "free-safety-and-patch-export",
+    "claim": "Safety checkpoints and patch export are included in the free controls.",
+    "where": "README paid tier summary",
+    "test": "npm test -- --grep @claim:free-safety-and-patch-export",
+    "sandbox": "fresh browser context at /demo without a license; assert the reverse and patch-export controls are enabled and complete their free flow"
   }
 ]

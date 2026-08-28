@@ -2,7 +2,7 @@
 
 Reverse selected agent changes without losing unrelated work.
 
-Change Recovery Ledger is a local desktop sidecar for developers supervising long agent sessions. It records project snapshots with the agent’s intent and command trail. You can inspect a file group, create a safety checkpoint, restore selected files, or export selected changes as a patch. It does not change Git history or run exported patches.
+Change Recovery Ledger is a local desktop sidecar for developers supervising long agent sessions. It records project snapshots with the agent’s intent and command trail. You can inspect a file group, create a safety checkpoint, restore selected files, or export selected changes as a patch. Git metadata is excluded from checkpoints, and exported patches never run themselves.
 
 The public site is at [agent-change-recovery.sociobot.in](https://agent-change-recovery.sociobot.in). Open [`/demo`](https://agent-change-recovery.sociobot.in/demo) to try the full recovery path with isolated sample data.
 
@@ -17,7 +17,7 @@ The public site is at [agent-change-recovery.sociobot.in](https://agent-change-r
 - Sociobot license purchase, restore, and daily verification flow.
 - Static product site, legal pages, offline shell, and platform-aware release link.
 
-The first seven checkpoints are included. Pro costs $15 per developer each month. It adds longer history, configurable retention, and passphrase-encrypted recovery export. The free safety and patch export controls are never gated.
+The first seven checkpoints are included. Pro costs $15 per developer each month. It adds longer history, configurable retention, and passphrase-encrypted recovery export. Safety checkpoints and patch export are included in the free controls.
 
 ## Run the site and demo
 
@@ -55,7 +55,7 @@ Desktop packages are built only in GitHub Actions. Tag a release such as `v0.1.0
 
 ## Privacy and security
 
-Project contents are not sent by the desktop core. License verification sends only the pasted license token to `api.sociobot.in`. The landing page checks GitHub’s public API for current release filenames. There is no analytics or telemetry.
+Project contents are not sent by the desktop core. License verification sends only the pasted license token to `api.sociobot.in`. The landing page checks GitHub’s public API for current release filenames.
 
 Checkpoint data can contain secrets. Delete local ledgers when they are no longer needed. Keep normal Git history and backups; this product is a recovery sidecar, not a backup service.
 

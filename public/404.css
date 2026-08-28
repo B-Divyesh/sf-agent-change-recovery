@@ -1,0 +1,9 @@
+:root { color: #171713; background: #f1e9d2; font-family: ui-monospace, SFMono-Regular, Cascadia Code, Liberation Mono, monospace; }
+* { box-sizing: border-box; }
+body { min-height: 100vh; margin: 0; display: grid; place-items: center; padding: 24px; background-color: #f1e9d2; background-image: radial-gradient(#17171312 .65px, transparent .65px); background-size: 5px 5px; }
+main { width: min(700px, 100%); border: 3px solid #171713; padding: clamp(28px, 7vw, 72px); background: #fff9e9; box-shadow: 10px 10px 0 #145c70; }
+h1 { max-width: 10ch; margin: 0 0 24px; font: 900 clamp(2.8rem, 10vw, 5.4rem)/.9 Arial Black, Impact, sans-serif; letter-spacing: -.05em; text-transform: uppercase; }
+p { max-width: 52ch; font-size: 1.05rem; line-height: 1.55; }
+.eyebrow { margin-bottom: 24px; color: #0b4050; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+a { display: inline-block; min-height: 44px; margin-top: 18px; padding: 11px 18px; border: 2px solid #171713; color: #fff9e9; background: #b9361f; box-shadow: 5px 5px 0 #171713; font-weight: 800; text-decoration: none; }
+a:focus-visible { outline: 4px solid #145c70; outline-offset: 4px; }
