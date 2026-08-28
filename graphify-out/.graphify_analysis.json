@@ -416,13 +416,8 @@
       "degree": 12
     },
     {
-      "id": "src_tauri_src_lib_load_snapshot",
-      "label": "load_snapshot()",
-      "degree": 11
-    },
-    {
-      "id": "src_tauri_src_lib_list_manifests",
-      "label": "list_manifests()",
+      "id": "src_main_render",
+      "label": "render()",
       "degree": 11
     },
     {
@@ -431,8 +426,13 @@
       "degree": 11
     },
     {
-      "id": "src_main_render",
-      "label": "render()",
+      "id": "src_tauri_src_lib_list_manifests",
+      "label": "list_manifests()",
+      "degree": 11
+    },
+    {
+      "id": "src_tauri_src_lib_load_snapshot",
+      "label": "load_snapshot()",
       "degree": 11
     },
     {
@@ -446,8 +446,8 @@
       "degree": 10
     },
     {
-      "id": "src_tauri_src_lib_checkpoint",
-      "label": "Checkpoint",
+      "id": "src_tauri_src_lib_changes_between",
+      "label": "changes_between()",
       "degree": 9
     }
   ],
