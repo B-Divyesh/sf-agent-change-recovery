@@ -1,0 +1,10 @@
+{
+  "slug": "agent-change-recovery",
+  "title": "Change Recovery Ledger",
+  "summary": "Inspect, reverse, and replay selected agent changes without losing unrelated work.",
+  "artifact_class": "desktop-app",
+  "user": "Developers supervising agents across long sessions who need to safely inspect, revert, and selectively replay changes after an agent takes a wrong turn.",
+  "smallest_useful_product": "Local agent sidecar that checkpoints file groups and commands, shows intent-linked change sets, and supports tested selective reversal/replay as a patch.",
+  "monetization": "subscription — $15/developer/month for persistent history, team policy, and encrypted recovery export.",
+  "constraints": "Local encryption and configurable retention; patches may contain secrets; never auto-run a replay; integrate with Git without altering history silently."
+}
