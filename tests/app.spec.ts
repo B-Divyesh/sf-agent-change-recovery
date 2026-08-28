@@ -60,6 +60,7 @@ test('@claim:offline-reload reloads the sample ledger offline', async ({ page, c
   await page.goto('/demo');
   await page.evaluate(() => navigator.serviceWorker.ready);
   await page.reload();
+  await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
   await context.setOffline(true);
   await page.reload();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Inspect the failed session change');
