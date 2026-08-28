@@ -1,0 +1,58 @@
+[
+  {
+    "id": "selective-reversal",
+    "claim": "Reverse selected agent files without changing the other files in the checkpoint.",
+    "where": "landing hero and demo recovery action",
+    "test": "npm test -- --grep @claim:selective-reversal",
+    "sandbox": "fresh browser context at /demo; select two of four files; verify only those files are marked restored"
+  },
+  {
+    "id": "patch-export",
+    "claim": "Export selected changes as a patch without running it.",
+    "where": "landing how-it-works section and demo toolbar",
+    "test": "npm test -- --grep @claim:patch-export",
+    "sandbox": "fresh browser context at /demo; download patch; verify selected path and diff content"
+  },
+  {
+    "id": "demo-isolation",
+    "claim": "Demo sample data is separate and resettable.",
+    "where": "demo banner and privacy copy",
+    "test": "npm test -- --grep @claim:demo-isolation",
+    "sandbox": "fresh browser context; mutate demo; reset; verify only demo-prefixed storage is removed"
+  },
+  {
+    "id": "local-privacy",
+    "claim": "Project files stay on this device.",
+    "where": "landing facts and privacy page",
+    "test": "npm test -- --grep @claim:local-privacy",
+    "sandbox": "fresh browser context at /demo; record all recovery-flow requests; verify every request is same-origin"
+  },
+  {
+    "id": "offline-reload",
+    "claim": "The demo works offline after one visit.",
+    "where": "landing facts and README",
+    "test": "npm test -- --grep @claim:offline-reload",
+    "sandbox": "fresh browser context at /demo; wait for service worker; switch context offline; reload sample ledger"
+  },
+  {
+    "id": "price",
+    "claim": "Pro costs $15 per developer each month.",
+    "where": "landing facts and paid tier",
+    "test": "npm test -- --grep @claim:price",
+    "sandbox": "fresh browser context at /; verify exact price and Sociobot checkout link"
+  },
+  {
+    "id": "free-history-limit",
+    "claim": "The first seven checkpoints are included.",
+    "where": "landing facts and README",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml free_history_stops_after_seven_checkpoints",
+    "sandbox": "native unit sandbox; assert free capture stops at seven and an active Pro state permits more"
+  },
+  {
+    "id": "encrypted-export",
+    "claim": "Pro exports a passphrase-encrypted recovery file.",
+    "where": "landing paid tier and README",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml encrypted_export_has_versioned_header_and_hides_plaintext",
+    "sandbox": "native unit sandbox; encrypt fixture patch; assert versioned CRL header and no plaintext secret"
+  }
+]
