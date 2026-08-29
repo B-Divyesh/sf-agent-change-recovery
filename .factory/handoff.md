@@ -7,9 +7,13 @@ Repair commit: `d73aba918f4c98809321cd10dcfeb486a5922d38` on `main`.
 The static product is deployed at
 `https://agent-change-recovery.sociobot.in` (Static Web Apps deployment
 `c2554db0-e44a-4a73-9c8e-17d8788158fd`). It now serves the v4 service worker
-and the `0.1.2` product identity. Tag `v0.1.2` points at the repair commit;
-the GitHub Actions desktop release run is
-[`33254038576`](https://github.com/B-Divyesh/sf-agent-change-recovery/actions/runs/33254038576).
+and the `0.1.2` product identity. Tag `v0.1.2` points at the repair commit.
+The GitHub Actions desktop release
+[`33254038576`](https://github.com/B-Divyesh/sf-agent-change-recovery/actions/runs/33254038576)
+completed successfully and published the non-draft
+[`v0.1.2`](https://github.com/B-Divyesh/sf-agent-change-recovery/releases/tag/v0.1.2)
+release with macOS arm64/x64 DMGs, Windows MSI/EXE, Linux AppImage/DEB/RPM,
+`SHA256SUMS`, and `latest.json`.
 
 ## What was repaired
 
@@ -66,6 +70,9 @@ CI=true npm run tauri build -- --target x86_64-unknown-linux-gnu --bundles deb
   `Change Recovery Ledger_0.1.2_amd64.deb`; `dpkg-deb` reports package
   `change-recovery-ledger`, version `0.1.2`, architecture `amd64`. Its binary
   is executable and stayed running under Xvfb for 12 seconds.
+- The published `v0.1.2` Debian asset checksum matches `SHA256SUMS`; its
+  downloaded package metadata also reports `change-recovery-ledger 0.1.2
+  amd64`. `latest.json` is valid and lists the multi-platform release assets.
 - Factory `verify-url.sh` against the final local build passed at 631 ms with
   no console errors, a title, `lang=en`, one h1, one main landmark, and no
   missing alt text.
