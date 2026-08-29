@@ -79,7 +79,7 @@ npm run build
 `npm run build` writes the static deployment output to `dist/site`.
 
 The release workflow builds desktop packages on macOS, Windows, and Linux runners.
-Tag `v0.1.3` or later to start that workflow.
+Tag `v0.1.4` or later to start that workflow.
 It publishes checksums and a release manifest with the desktop files.
 
 ## Privacy

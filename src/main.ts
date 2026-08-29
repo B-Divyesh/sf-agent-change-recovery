@@ -126,7 +126,7 @@ function header() {
 function footer() {
   return `
     <footer class="site-footer">
-      <div><strong>Change Recovery Ledger</strong><p class="muted">Reverse selected agent changes without losing the rest.</p><small>Original generated artwork · v0.1.3 · build 2026.08.29</small></div>
+      <div><strong>Change Recovery Ledger</strong><p class="muted">Reverse selected agent changes without losing the rest.</p><small>Original generated artwork · v0.1.4 · build 2026.08.29</small></div>
       <nav class="footer-links" aria-label="Footer navigation"><a href="/privacy" data-route>Privacy</a><a href="/terms" data-route>Terms</a><a href="https://sociobot.in" rel="external">Built by Param Factory<span class="sr-only"> (external site)</span></a></nav>
     </footer>`;
 }
