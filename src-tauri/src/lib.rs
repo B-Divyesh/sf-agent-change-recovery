@@ -1931,6 +1931,12 @@ mod tests {
         );
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn reversal_rejects_replaced_symlink_parent_outside_project() {
+        assert_replaced_symlink_parent_is_rejected();
+    }
+
     #[test]
     // @claim:local-encryption
     fn claim_local_encryption_keeps_project_content_out_of_ledger_files() {

@@ -1,86 +1,38 @@
-# Handoff — verification 8
-
-## Independent release decision — FAIL (29 August 2026 UTC)
-
-Candidate `b44965734cdf0054c60486659a33ae61e97f107d` was independently tested at `https://agent-change-recovery.sociobot.in`. **Do not release this candidate.** Full evidence is in `.factory/verification-8.md`.
-
-Release blockers:
-
-- Native reversal can follow a replaced parent-directory symlink and overwrite a file outside the chosen project (`src-tauri/src/lib.rs:676-688, 848-855`).
-- Patch export omits missing-final-newline markers; a representative generated patch failed GNU `patch --dry-run`.
-- The live **Subscribe to Pro** URL returns HTTP 404 with `{"error":"enabled factory product","status":404}`.
-- `CI=true npm run tauri build` builds the executable, `.deb`, and `.rpm` but exits 1 at AppImage bundling (`failed to run linuxdeploy`) in the supplied Ubuntu 24.04 worker.
-
-Additional findings: the mobile diff `<summary>` is only 18px high; the public encrypted-retention-setting statement is not represented as a claim; and `RECOVERY / 001` violates the supplied no-decorative-lore copy rule.
-
-Passing evidence: all 27 declared claim commands, all 30 browser tests, all 19 native tests, TypeScript build, Rust fmt/clippy, live route checks, live offline reload, zero serious/critical Axe findings, byte-for-byte deployment identity, a checksum-verified published Debian package and real installer smoke test, and Lighthouse 100/100/100/100. The Sociobot verify endpoint allowed 30 requests and returned 429 with `Retry-After: 3` on request 31. No sign-in flow exists.
-
-No product code was modified. Four pre-existing dirty `graphify-out` files were left untouched and must not be included in the verification commit.
-
----
-
-## Prior builder handoff
+# Handoff — repair verification 8
 
 ## Delivered
 
-- Replaced routine plaintext checkpoint files with AES-256-GCM encrypted snapshots and manifests. Each ledger uses a user-provided passphrase, Argon2-derived key, random per-file nonce, and encrypted settings/key check. The passphrase remains only in app memory.
-- Added migration for the candidate's legacy plaintext ledger on its next passphrase-backed open. It writes encrypted replacements before removing the old manifest and snapshot files.
-- Added a visible retention selector: free ledgers keep 2 or 7 checkpoints; an active Pro license enables 30 or 90. Pruning writes an encrypted baseline before removing the oldest visible checkpoint, so the oldest retained change can still be selectively reversed.
-- Added a $15/developer/month Pro plan through Sociobot checkout, URL license capture, local restore-purchase form, once-per-day cached verification, and a native Tauri verifier for desktop origins. Pro enables extended retention, an encrypted team policy note, and password-protected recovery export. Standard patch export and safety recovery remain free.
-- Completed the claims ledger: 27 declared claims now include local encryption, retention, policy notes, license behavior, chosen-folder scope, size/Git exclusions, safety checkpoints, deletion, and encrypted recovery behavior.
-- Bumped the desktop/site release to `0.1.5`, updated the service-worker cache to `recovery-ledger-v5`, README, privacy/terms, demo documentation, and copy audit.
+Repair source commit: `8306be7` (`fix: close verification-8 release blockers`).
+
+- Native selective reversal now rejects symlinked destination components before it records a safety checkpoint and uses descriptor-relative, no-follow file operations on Unix while restoring or deleting selected files. The exact reproduced case is retained as `reversal_rejects_replaced_symlink_parent_outside_project`.
+- Patch export preserves missing-final-newline state with standard `\\ No newline at end of file` markers. It now checks every selected file and gives a clear error for binary content instead of silently omitting it. The regression test runs GNU `patch --dry-run` against both normal and no-final-newline fixtures.
+- The mobile selected-diff `<summary>` is a 44px minimum target and is covered at a 390px viewport.
+- The privacy/README retention-encryption statement is registered as `retention-settings-encryption` with a native encrypted-storage and reopen regression test.
+- Removed the `RECOVERY / 001` decorative label. The risograph visual direction remains intact.
+- AppImage packaging now installs `file`, clears only generated AppImage staging on Linux, verifies AppImage/deb/rpm outputs in CI, and prepares a checksum-pinned GTK helper whose module links are idempotent. The app/site release is `0.1.6`; the service-worker cache is `recovery-ledger-v6`.
 
 ## Verification
 
-- Clean install: `npm ci --include=dev` passed.
-- Browser suite: `npm test` passed — 30 Playwright tests, including desktop/390px behavior, keyboard dialog focus, route accessibility, service-worker offline reload, privacy request checks, and Playwright Axe scans with zero serious/critical findings.
-- Native suite: `cargo test --manifest-path src-tauri/Cargo.toml` passed — 19 tests.
-- Native quality: `cargo fmt --manifest-path src-tauri/Cargo.toml -- --check` and `cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings` passed.
-- Production site build: `npm run build` passed; `dist/site` contains 40.20 KB JavaScript (12.72 KB gzip) and 15.63 KB CSS (4.35 KB gzip).
-- Every declared claim command in `.factory/claims.json` was run from this clean install and passed. The 27th, `license-daily-verification`, is also covered by the final browser suite.
-- Local URL verifier passed for `/`, `/demo`, `/privacy`, and `/terms`: title, language, one main, one H1, image alts, and console were clean.
-- The standalone Axe CLI was attempted. Its bundled ChromeDriver targets Chrome 152 while the preinstalled Playwright Chromium is 145, so it cannot create a session in this container. The repository's Playwright Axe integration ran instead and passed serious/critical scans on every route.
-- Desktop package: `CI=true npm run tauri build -- --bundles deb` passed. It produced `src-tauri/target/release/bundle/deb/Change Recovery Ledger_0.1.5_amd64.deb` (5,517,170 bytes), whose SHA-256 is `bf090be7a449aa6e98b2bae50cf70a45df583712388e52d477f1b1d51ca0eaa2`.
+- Exact pre-repair reproduction on `b44965734cdf0054c60486659a33ae61e97f107d`: `cargo test --manifest-path src-tauri/Cargo.toml reversal_rejects_replaced_symlink_parent_outside_project -- --nocapture` failed because the outside sentinel was modified. The same command now passes.
+- Clean install: `npm ci` passed with 0 audit vulnerabilities.
+- Browser integration: `npm test` passed, **32 tests**. It includes desktop and 390px mobile layout, keyboard dialog focus, Playwright Axe serious/critical checks, demo isolation, privacy request policy, service-worker offline/update behavior, release lookup fallback, and console policy checks.
+- Native: `cargo test --manifest-path src-tauri/Cargo.toml` passed; `cargo fmt --manifest-path src-tauri/Cargo.toml -- --check` and `cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --all-features -- -D warnings` passed.
+- Claims: all **28** commands from `.factory/claims.json` passed from the clean install, including `patch-export`, `chosen-folder-only`, and `retention-settings-encryption`.
+- Static production build: `npm run build` passed. It emits 40.20 KB JavaScript (12.72 KB gzip) and 15.58 KB CSS (4.32 KB gzip) in `dist/site`.
+- Local URL verification: `/opt/fleet/lib/verify-url.sh http://127.0.0.1:4173` passed with title, `lang=en`, one H1, one main, image alts, no unlabeled buttons, and no console errors.
+- Desktop package: `CI=true npm run tauri build` passed and emitted the Debian package, RPM, and `Change Recovery Ledger_0.1.6_amd64.AppImage`. Debian extraction exposed an executable `/usr/bin/change-recovery-ledger`; RPM metadata reports version `0.1.6`; the AppImage is a valid ELF AppImage with offset `944632`.
+
+## Checkout registration boundary
+
+The application and native verifier use the required production mapping:
+`https://api.sociobot.in/api/v1/products/agent-change-recovery/checkout`.
+
+On 29 August 2026, both that production URL and the matching pilot URL returned `404 {"error":"enabled factory product","status":404}`. The public product catalog contains no `agent-change-recovery` entry, and this worker has no product-registration credential or supported registration tool. No unrelated product checkout was substituted. The factory billing owner must register/enable the `agent-change-recovery` $15/developer/month product; then recheck that URL returns the hosted checkout before announcing Pro sales.
 
 ## Deployment and release
 
-- Committed repair: `661df98` (`fix: encrypt ledgers and enforce retention`), pushed to `main`; tag `v0.1.5` is pushed.
-- Static deployment: deployed `dist/site` to the configured `sf-agent-change-recovery` Azure Static Web App production environment. It is live at `https://agent-change-recovery.sociobot.in` (Azure endpoint: `https://yellow-field-06248de10.7.azurestaticapps.net`). The custom domain serves the release's `index-Bmm9SXYy.js`; live URL checks passed for `/`, `/demo`, `/privacy`, and `/terms`.
-- Desktop release: [Change Recovery Ledger v0.1.5](https://github.com/B-Divyesh/sf-agent-change-recovery/releases/tag/v0.1.5). GitHub Actions run [33267150720](https://github.com/B-Divyesh/sf-agent-change-recovery/actions/runs/33267150720) completed successfully on 2026-08-29 for macOS Intel/Apple Silicon, Windows, and Linux, then published `SHA256SUMS` and valid `latest.json`.
-- Consumer check: downloaded release asset `Change.Recovery.Ledger_0.1.5_amd64.deb` and verified it against the published `SHA256SUMS`: `8f199f3ed264acf9487ac115fc726da3d571bc55e38169c750b762e48256d8c2` — `OK`.
-- The published desktop artifacts are unsigned. A production signed release needs the owner to add platform signing configuration to the workflow (Apple certificate/notarization credentials and a Windows Authenticode PFX); none are embedded in this repository.
+The source is ready for push, static deployment to `dist/site`, and the `v0.1.6` desktop release workflow. Update this section with the pushed commit, deployment identity, and release assets after those operations complete.
 
-## Known limitation
+## Operator action
 
-The desktop app deliberately does not retain a passphrase. If a user loses it, encrypted local checkpoint history cannot be opened. This is the intended privacy trade-off; users should keep normal Git history and backups.
-
-## Repair 7 — 29 August 2026
-
-### Delivered
-
-- Reproduced the controller's intermittent browser failure by fulfilling the landing page's GitHub release request with HTTP 403. Chromium emitted `Failed to load resource: the server responded with a status of 403 (Forbidden)` even though the product's fallback copy rendered.
-- Made the Playwright suite hermetic for the documented GitHub release lookup. Each regular browser context now receives a realistic local release fixture; the release/privacy tests retain route-specific fixtures. This prevents rate-limit-dependent external 403s from becoming console resource errors during unrelated quality checks.
-- Strengthened the built CSP regression: it now asserts that the release request was intercepted exactly once, the fixture result rendered, `frame-ancestors 'none'` remains response-header-only, and the console error list is empty.
-- Reconfirmed the report-7 delivery remains present: encrypted local snapshots/manifests, enforced 2/7/30/90 retention, listed claim coverage for all public safety/privacy behavior, and the $15/month Sociobot Pro restore flow.
-
-### Verification
-
-- Clean JavaScript install: `npm ci --include=dev` — passed with 0 audit vulnerabilities.
-- Exact security-policy regression: `npm test -- --grep "built security policy keeps frame ancestry"` — passed. Forced pre-fix 403 evidence was captured before the repair; the complete suite has no browser console resource error in this test.
-- Browser suite: `npm test` — **30 passed**. This includes desktop and 390px mobile layouts, keyboard/focus dialog behavior, Playwright Axe serious/critical scans, demo isolation, request privacy, service-worker offline/update behavior, and all browser claims.
-- Native suite: `cargo test --manifest-path src-tauri/Cargo.toml` — **19 passed**; `cargo fmt --manifest-path src-tauri/Cargo.toml -- --check` and `cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings` — passed.
-- Production build: `npm run build` — passed; `dist/site` contains 40.20 KB JavaScript (12.72 KB gzip) and 15.63 KB CSS (4.35 KB gzip).
-- Local desktop package: `CI=true npm run tauri build -- --bundles deb` — passed; produced `Change Recovery Ledger_0.1.5_amd64.deb` (5,517,160 bytes, SHA-256 `84c74fe62034399a942a29206ae97e7aa6bc606daa507754078af2a359b74dcc`). Extracting it as a consumer yielded an executable `/usr/bin/change-recovery-ledger`.
-- Published-consumer check: downloaded the v0.1.5 Debian asset and verified it against its published `SHA256SUMS` — passed.
-- Live production check: `scripts/verify-url.sh` passed on `/`, `/demo`, `/privacy`, and `/terms` (title, `lang`, exactly one `main`/`h1`, image alts, and no console errors). The live response has the response-header CSP with `frame-ancestors 'none'`; the hashed JS has `Cache-Control: public, max-age=31536000, immutable`.
-- Mobile Lighthouse against production: performance **99**, accessibility **100**, LCP **1,356 ms**, TBT **100 ms**, CLS **0**.
-
-### Packaging note
-
-The local Debian package is reproducible. The local AppImage attempt reaches `linuxdeploy` with the CI environment flag (`APPIMAGE_EXTRACT_AND_RUN=1`) but exits 1 on this Ubuntu 24.04 container because its GTK plugin fails after staging the AppDir; `/dev/fuse` is also absent. The release workflow deliberately uses Ubuntu 22.04 and the existing checksum-verified v0.1.5 AppImage remains the consumer artifact. This is a runner/tooling limitation, not a desktop runtime regression.
-
-### Source and deployment
-
-- Repair commit `52efd33` (`test: isolate release lookup from console policy checks`) is pushed to `main`.
-- Deployed `dist/site` through the configured factory Azure Static Web Apps work order. Deployment `e0dba5fc-9213-46fe-95ec-6e4da3678b37` succeeded at `https://yellow-field-06248de10.7.azurestaticapps.net`; the configured custom domain `https://agent-change-recovery.sociobot.in` returned HTTPS 200.
-- Post-deployment identity check: the deployed `assets/index-Bmm9SXYy.js` SHA-256 is `e2f123ff35c7c00d80c547e5594f106e16508c057edbde5771ed86b132c7df63`, exactly matching this build. `/missing-sheet` returns HTTP 404.
+Desktop artifacts remain unsigned. A signed macOS release needs the Apple certificate/notarization configuration, and Windows needs an Authenticode PFX. No signing material is stored in this repository.
