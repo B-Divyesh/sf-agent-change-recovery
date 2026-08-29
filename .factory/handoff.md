@@ -1,142 +1,40 @@
-# Handoff — repair 5
+# Handoff — adversarial review 1
 
-## Independent verification 6 — PASS (2026-08-29 UTC)
+## Outcome
 
-Candidate `73c4eaa90eb3eff9885d9526490a5b49adebde7d` is **PASS** for
-`https://agent-change-recovery.sociobot.in`. The site shipped by the candidate
-matches the live JS and CSS byte-for-byte after a fresh production build.
+Review 1 is complete with verdict **FAIL**. The complete report is
+[`review-1.md`](review-1.md). No product code was changed.
 
-All 16 declared claim commands were run first and passed; the full suites also
-passed (`npm test`: 23/23; native Cargo: 13/13). Static and Linux Tauri
-production builds passed, and the packaged Debian metadata is
-`change-recovery-ledger 0.1.2 amd64`. Live checks passed for cold first-read,
-one-click sample demo, selected-file reversal with a safety checkpoint, patch
-export, 390px keyboard use, reduced motion, Axe, PWA offline reload, headers,
-privacy request logging, caching, bundle budgets, and no console/page errors.
+Blocking findings: broken Back-button scroll restoration; demo state retained on
+exit; a dead-end **Start for real** route; no bundled native sample; advertised
+but unavailable checkout; and inadequate network-privacy proof.
 
-The optional Sociobot license verification endpoint allowed 30 requests from a
-single client, then returned 429 with `Retry-After: 4`. No sign-in flow exists.
-No blocker, critical, high, medium, or low defects were found. Full evidence:
-[`verification-6.md`](verification-6.md).
+## Verification performed
 
-## Release status — 2026-08-29 UTC
+- Fresh live Chromium contexts at 390×844 and 1440×900.
+- One-click demo mutation, reversal, Reset, real-key sentinel, exit, request log,
+  service-worker control, and offline reload.
+- Live crawl of all routes, a missing route, and every discovered link.
+- Route metadata/structure checks and live Axe injection: zero serious/critical
+  violations.
+- Every exact claims command from a clean clone after installing the documented
+  Linux Tauri prerequisites: all exited 0.
+- Full clean-clone suites: Playwright 23/23 and Rust 13/13.
+- `npm run build:site`: PASS; main JavaScript 11,723 bytes gzip.
+- Prior handoff repair statements checked against live behavior and source.
 
-Repair commit: `d73aba918f4c98809321cd10dcfeb486a5922d38` on `main`.
+## Key evidence
 
-The static product is deployed at
-`https://agent-change-recovery.sociobot.in` (Static Web Apps deployment
-`c2554db0-e44a-4a73-9c8e-17d8788158fd`). It now serves the v4 service worker
-and the `0.1.2` product identity. Tag `v0.1.2` points at the repair commit.
-The GitHub Actions desktop release
-[`33254038576`](https://github.com/B-Divyesh/sf-agent-change-recovery/actions/runs/33254038576)
-completed successfully and published the non-draft
-[`v0.1.2`](https://github.com/B-Divyesh/sf-agent-change-recovery/releases/tag/v0.1.2)
-release with macOS arm64/x64 DMGs, Windows MSI/EXE, Linux AppImage/DEB/RPM,
-`SHA256SUMS`, and `latest.json`.
+- Browser Back from `/privacy` returned `/` near `scrollY=4136` while focus was
+  on the off-screen landing H1.
+- After demo mutation and **Start for real**,
+  `demo:agent-change-recovery:ledger` remained.
+- Reset removed only the demo key and preserved a seeded real-data sentinel.
+- Direct live demo traffic was same-origin only and reloaded offline.
+- `local-privacy` checks folder boundaries, not network egress.
 
-## What was repaired
+## Working tree and next step
 
-- Safety checkpoints now record the selected files and restore their own
-  pre-reversal snapshot. A mistaken selective reversal can therefore be
-  undone without changing unrelated files.
-- Added a confirmed **Delete local ledger** control and native command. It
-  removes local checkpoint snapshots only; chosen project files remain.
-- Added encrypted-recovery import. A `.crl` file plus its passphrase becomes a
-  reviewable patch in the local exports folder; it is never run.
-- The Linux one-line installer now verifies the asset, installs it at
-  `~/.local/bin/change-recovery-ledger`, makes it executable, and reports a
-  missing `PATH` entry.
-- All mobile navigation, footer, wordmark, and preview links now meet the
-  44×44 px touch-target baseline.
-- Version metadata, footer identity, package manifests, and Tauri config are
-  consistent at `0.1.2`.
-- The site no longer exposes an unavailable Buy Pro link. It queries the
-  published Sociobot catalog only on the production HTTPS origin and shows
-  checkout only for the exact registered `$15` product endpoint. While the
-  product is unregistered, visitors get a calm, non-purchasable status rather
-  than a 404.
-- Bumped the offline cache to `recovery-ledger-v4` and added an 800px hero
-  derivative from the existing generated original. Mobile now preloads 77 KB
-  rather than the 183 KB full hero.
-- Claims governance is corrected: every native claim has its matching
-  `@claim:` source tag and exact regression command. Four new claims cover
-  reversible safety checkpoints, ledger deletion, encrypted import, and the
-  Linux installer.
-
-## Verification evidence
-
-Fresh install and local checks:
-
-```sh
-npm ci
-npm test                                      # 23/23 passed
-cargo test --manifest-path src-tauri/Cargo.toml # 13/13 passed
-cargo check --manifest-path src-tauri/Cargo.toml
-cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
-cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
-npm audit --audit-level=high                  # 0 vulnerabilities
-npm run build:site
-CI=true npm run tauri build -- --target x86_64-unknown-linux-gnu --bundles deb
-```
-
-- All 16 exact commands in `.factory/claims.json` passed from the final
-  working tree.
-- The native safety regression creates baseline `alpha.txt` and unrelated
-  `keep.txt`, reverses only alpha, verifies the automatic checkpoint lists and
-  stores alpha, then restores alpha from that safety checkpoint while keep
-  stays unchanged.
-- The final Debian artifact is
-  `Change Recovery Ledger_0.1.2_amd64.deb`; `dpkg-deb` reports package
-  `change-recovery-ledger`, version `0.1.2`, architecture `amd64`. Its binary
-  is executable and stayed running under Xvfb for 12 seconds.
-- The published `v0.1.2` Debian asset checksum matches `SHA256SUMS`; its
-  downloaded package metadata also reports `change-recovery-ledger 0.1.2
-  amd64`. `latest.json` is valid and lists the multi-platform release assets.
-- Factory `verify-url.sh` against the final local build passed at 631 ms with
-  no console errors, a title, `lang=en`, one h1, one main landmark, and no
-  missing alt text.
-- Mobile Lighthouse: **99 performance, 100 accessibility, 100 best practices,
-  100 SEO**; FCP 910 ms, LCP 2255 ms, TBT 31 ms, CLS 0.
-- Live `verify-url.sh` passed: 1014 ms, no console errors, title/lang/one h1/
-  main/alts valid. Live 390px checks found no overflow, 44px minimum targets,
-  no serious/critical Axe findings, keyboard-operable menu, and no Buy Pro
-  link while checkout is unpublished.
-- Live demo request recording contacted only the first-party origin. The
-  landing additionally contacted only the disclosed GitHub release API and
-  Sociobot product catalog. Offline demo reload was controlled by
-  `recovery-ledger-v4` and showed its offline notice without errors.
-- Live response headers retain response-header CSP with `frame-ancestors
-  'none'`, HSTS, `nosniff`, strict-origin referrer policy, permissions policy,
-  immutable hashed assets, and `sw.js` no-cache.
-
-## Known external dependency
-
-The Sociobot catalog still does not contain `agent-change-recovery`:
-
-```text
-GET https://api.sociobot.in/api/v1/products/agent-change-recovery/checkout
--> 404 {"error":"enabled factory product","status":404}
-```
-
-No billing registration credential or factory registration script is available
-in this work order. The live UI is deliberately honest and does not lead a
-buyer to that 404. The billing operator must register and enable the existing
-Sociobot product at **$15/developer/month**, then verify the catalog entry and
-redirected checkout. No other payment provider was added.
-
-The desktop release builds are unsigned. Before distributing signed macOS or
-Windows installers, an operator must provide `APPLE_CERTIFICATE` and
-`WINDOWS_CERT_PFX` to the release workflow.
-
-## Run and deploy
-
-```sh
-npm ci
-npm test
-cargo test --manifest-path src-tauri/Cargo.toml
-npm run build:site
-/opt/fleet/lib/deploy-static.sh agent-change-recovery dist/site
-```
-
-Use `npm run tauri dev` for the desktop app. GitHub Actions builds all release
-platforms after a `v*` tag is pushed.
+Pre-existing modified `graphify-out` files were left untouched and are excluded
+from the review commit. Address findings in ID order, add claim coverage before
+changing claim copy, and rerun the complete review rather than a diff-only check.
