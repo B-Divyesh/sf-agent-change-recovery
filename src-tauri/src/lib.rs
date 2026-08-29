@@ -10,7 +10,7 @@ use std::{
     collections::BTreeMap,
     fs,
     path::{Component, Path, PathBuf},
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use tauri::Manager;
 use walkdir::{DirEntry, WalkDir};
@@ -18,6 +18,11 @@ use walkdir::{DirEntry, WalkDir};
 const MAX_FILE_BYTES: u64 = 2 * 1024 * 1024;
 const MAX_FILES: usize = 8_000;
 const MAX_RECOVERY_BYTES: u64 = 32 * 1024 * 1024;
+const MIN_RETENTION: usize = 2;
+const FREE_RETENTION_MAX: usize = 7;
+const PRO_RETENTION_MAX: usize = 90;
+const STORAGE_MAGIC: &[u8; 4] = b"LGR2";
+const KEY_CHECK: &[u8] = b"change-recovery-ledger-key-check-v1";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -45,6 +50,57 @@ pub struct Checkpoint {
     #[serde(default)]
     safety: bool,
     project_path: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct StoreKeyInfo {
+    version: u8,
+    salt: Vec<u8>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct LedgerSettings {
+    retention: usize,
+    #[serde(default)]
+    policy: String,
+}
+
+struct CheckpointWrite {
+    intent: String,
+    commands: Vec<String>,
+    safety: bool,
+    files_override: Option<Vec<FileChange>>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CaptureCheckpointInput {
+    path: String,
+    intent: String,
+    commands: Vec<String>,
+    pro: bool,
+    retention: usize,
+    passphrase: String,
+    policy: String,
+}
+
+struct LedgerCrypto {
+    key: [u8; 32],
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LedgerResponse {
+    ledger: Vec<Checkpoint>,
+    retention: usize,
+    policy: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct LicenseVerdict {
+    valid: bool,
+    reason: String,
+    expires_at: Option<String>,
 }
 
 fn now_id() -> String {
@@ -133,12 +189,315 @@ fn read_project(root: &Path) -> Result<BTreeMap<String, Vec<u8>>, String> {
     Ok(files)
 }
 
-fn load_snapshot(dir: &Path) -> Result<BTreeMap<String, Vec<u8>>, String> {
-    let snapshot = dir.join("files");
-    if !snapshot.exists() {
-        return Ok(BTreeMap::new());
+fn validate_retention(retention: usize, pro: bool) -> Result<(), String> {
+    let maximum = if pro {
+        PRO_RETENTION_MAX
+    } else {
+        FREE_RETENTION_MAX
+    };
+    if !(MIN_RETENTION..=maximum).contains(&retention) {
+        return Err(format!(
+            "Choose a retention value from {MIN_RETENTION} to {maximum} checkpoints."
+        ));
     }
-    read_project(&snapshot)
+    Ok(())
+}
+
+fn require_ledger_passphrase(passphrase: &str) -> Result<(), String> {
+    if passphrase.chars().count() < 12 {
+        return Err(
+            "Use a local ledger passphrase with at least 12 characters. It is never saved.".into(),
+        );
+    }
+    Ok(())
+}
+
+fn storage_path(store: &Path, name: &str) -> PathBuf {
+    store.join(name)
+}
+
+fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), String> {
+    let parent = path
+        .parent()
+        .ok_or("Could not determine the ledger storage folder.")?;
+    fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or("Could not name the ledger storage file.")?;
+    let temporary = parent.join(format!(".{file_name}.{}.tmp", now_id()));
+    fs::write(&temporary, bytes).map_err(|error| error.to_string())?;
+    // POSIX rename replaces a file atomically. Windows does not permit that
+    // replacement, so retain the compatible fallback there.
+    #[cfg(not(target_os = "windows"))]
+    return fs::rename(temporary, path).map_err(|error| error.to_string());
+
+    #[cfg(target_os = "windows")]
+    if path.exists() {
+        fs::remove_file(path).map_err(|error| error.to_string())?;
+    }
+    #[cfg(target_os = "windows")]
+    fs::rename(temporary, path).map_err(|error| error.to_string())
+}
+
+fn derive_ledger_key(passphrase: &str, salt: &[u8]) -> Result<[u8; 32], String> {
+    require_ledger_passphrase(passphrase)?;
+    if salt.len() != 16 {
+        return Err("The local ledger key information is invalid.".into());
+    }
+    let mut key = [0_u8; 32];
+    Argon2::default()
+        .hash_password_into(passphrase.as_bytes(), salt, &mut key)
+        .map_err(|error| error.to_string())?;
+    Ok(key)
+}
+
+fn encrypt_for_ledger(content: &[u8], crypto: &LedgerCrypto) -> Result<Vec<u8>, String> {
+    let mut nonce_bytes = [0_u8; 12];
+    OsRng.fill_bytes(&mut nonce_bytes);
+    let cipher = Aes256Gcm::new_from_slice(&crypto.key).map_err(|error| error.to_string())?;
+    let encrypted = cipher
+        .encrypt(Nonce::from_slice(&nonce_bytes), content)
+        .map_err(|_| "The local ledger could not be encrypted.".to_string())?;
+    let mut output = STORAGE_MAGIC.to_vec();
+    output.extend_from_slice(&nonce_bytes);
+    output.extend_from_slice(&encrypted);
+    Ok(output)
+}
+
+fn decrypt_from_ledger(content: &[u8], crypto: &LedgerCrypto) -> Result<Vec<u8>, String> {
+    const HEADER_BYTES: usize = 4 + 12;
+    const AUTH_TAG_BYTES: usize = 16;
+    if content.len() < HEADER_BYTES + AUTH_TAG_BYTES || &content[..4] != STORAGE_MAGIC {
+        return Err("The local ledger data is not in a supported encrypted format.".into());
+    }
+    let cipher = Aes256Gcm::new_from_slice(&crypto.key).map_err(|error| error.to_string())?;
+    cipher
+        .decrypt(
+            Nonce::from_slice(&content[4..HEADER_BYTES]),
+            &content[HEADER_BYTES..],
+        )
+        .map_err(|_| "The local ledger could not be opened. Check its passphrase.".to_string())
+}
+
+fn write_encrypted(path: &Path, content: &[u8], crypto: &LedgerCrypto) -> Result<(), String> {
+    write_atomic(path, &encrypt_for_ledger(content, crypto)?)
+}
+
+fn read_encrypted(path: &Path, crypto: &LedgerCrypto) -> Result<Vec<u8>, String> {
+    let bytes = fs::read(path).map_err(|error| error.to_string())?;
+    decrypt_from_ledger(&bytes, crypto)
+}
+
+fn create_ledger_store(
+    store: &Path,
+    passphrase: &str,
+    retention: usize,
+) -> Result<(LedgerCrypto, LedgerSettings), String> {
+    require_ledger_passphrase(passphrase)?;
+    validate_retention(retention, true)?;
+    fs::create_dir_all(store).map_err(|error| error.to_string())?;
+    let mut salt = [0_u8; 16];
+    OsRng.fill_bytes(&mut salt);
+    let crypto = LedgerCrypto {
+        key: derive_ledger_key(passphrase, &salt)?,
+    };
+    let key_info = StoreKeyInfo {
+        version: 2,
+        salt: salt.to_vec(),
+    };
+    write_atomic(
+        &storage_path(store, "storage.json"),
+        &serde_json::to_vec(&key_info).map_err(|error| error.to_string())?,
+    )?;
+    write_encrypted(&storage_path(store, "key-check.enc"), KEY_CHECK, &crypto)?;
+    let settings = LedgerSettings {
+        retention,
+        policy: String::new(),
+    };
+    write_encrypted(
+        &storage_path(store, "settings.enc"),
+        &serde_json::to_vec(&settings).map_err(|error| error.to_string())?,
+        &crypto,
+    )?;
+    Ok((crypto, settings))
+}
+
+fn open_encrypted_store(
+    store: &Path,
+    passphrase: &str,
+) -> Result<(LedgerCrypto, LedgerSettings), String> {
+    let key_info: StoreKeyInfo = serde_json::from_slice(
+        &fs::read(storage_path(store, "storage.json")).map_err(|error| error.to_string())?,
+    )
+    .map_err(|_| "The local ledger key information is invalid.".to_string())?;
+    if key_info.version != 2 {
+        return Err("This local ledger uses an unsupported encryption format.".into());
+    }
+    let crypto = LedgerCrypto {
+        key: derive_ledger_key(passphrase, &key_info.salt)?,
+    };
+    if read_encrypted(&storage_path(store, "key-check.enc"), &crypto)? != KEY_CHECK {
+        return Err("The local ledger could not be opened. Check its passphrase.".into());
+    }
+    let settings: LedgerSettings = serde_json::from_slice(&read_encrypted(
+        &storage_path(store, "settings.enc"),
+        &crypto,
+    )?)
+    .map_err(|_| "The local ledger settings could not be read.".to_string())?;
+    validate_retention(settings.retention, true)?;
+    Ok((crypto, settings))
+}
+
+fn legacy_checkpoint_dirs(project_store: &Path) -> Result<Vec<PathBuf>, String> {
+    if !project_store.exists() {
+        return Ok(Vec::new());
+    }
+    let mut dirs: Vec<PathBuf> = fs::read_dir(project_store)
+        .map_err(|error| error.to_string())?
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|path| path.is_dir() && path.join("manifest.json").exists())
+        .collect();
+    dirs.sort();
+    Ok(dirs)
+}
+
+fn migrate_legacy_store(
+    store: &Path,
+    passphrase: &str,
+    retention: usize,
+) -> Result<(LedgerCrypto, LedgerSettings), String> {
+    let legacy: Vec<(PathBuf, Checkpoint, BTreeMap<String, Vec<u8>>)> =
+        legacy_checkpoint_dirs(store)?
+            .into_iter()
+            .map(|dir| {
+                let manifest = serde_json::from_slice(
+                    &fs::read(dir.join("manifest.json")).map_err(|error| error.to_string())?,
+                )
+                .map_err(|error| error.to_string())?;
+                let snapshot = read_project(&dir.join("files"))?;
+                Ok((dir, manifest, snapshot))
+            })
+            .collect::<Result<_, String>>()?;
+    let (crypto, settings) = create_ledger_store(store, passphrase, retention)?;
+    for (dir, manifest, snapshot) in &legacy {
+        save_snapshot(snapshot, dir, &crypto)?;
+        write_manifest(dir, manifest, &crypto)?;
+    }
+    for (dir, _, _) in legacy {
+        let raw_files = dir.join("files");
+        if raw_files.exists() {
+            fs::remove_dir_all(raw_files).map_err(|error| error.to_string())?;
+        }
+        let raw_manifest = dir.join("manifest.json");
+        if raw_manifest.exists() {
+            fs::remove_file(raw_manifest).map_err(|error| error.to_string())?;
+        }
+    }
+    prune_checkpoints(store, &crypto, settings.retention)?;
+    Ok((crypto, settings))
+}
+
+fn open_ledger_store(
+    store: &Path,
+    passphrase: &str,
+    requested_retention: Option<usize>,
+    pro: bool,
+) -> Result<(LedgerCrypto, LedgerSettings), String> {
+    if let Some(retention) = requested_retention {
+        validate_retention(retention, pro)?;
+    }
+    fs::create_dir_all(store).map_err(|error| error.to_string())?;
+    let storage_info = storage_path(store, "storage.json");
+    let (crypto, mut settings) = if storage_info.exists() {
+        open_encrypted_store(store, passphrase)?
+    } else if !legacy_checkpoint_dirs(store)?.is_empty() {
+        migrate_legacy_store(
+            store,
+            passphrase,
+            requested_retention.unwrap_or(FREE_RETENTION_MAX),
+        )?
+    } else {
+        create_ledger_store(
+            store,
+            passphrase,
+            requested_retention.unwrap_or(FREE_RETENTION_MAX),
+        )?
+    };
+    if let Some(retention) = requested_retention {
+        if settings.retention != retention {
+            settings.retention = retention;
+            write_encrypted(
+                &storage_path(store, "settings.enc"),
+                &serde_json::to_vec(&settings).map_err(|error| error.to_string())?,
+                &crypto,
+            )?;
+            prune_checkpoints(store, &crypto, retention)?;
+        }
+    }
+    Ok((crypto, settings))
+}
+
+fn enforce_plan_retention(
+    store: &Path,
+    crypto: &LedgerCrypto,
+    settings: &mut LedgerSettings,
+    pro: bool,
+) -> Result<(), String> {
+    let maximum = if pro {
+        PRO_RETENTION_MAX
+    } else {
+        FREE_RETENTION_MAX
+    };
+    if settings.retention <= maximum {
+        return Ok(());
+    }
+    settings.retention = maximum;
+    write_encrypted(
+        &storage_path(store, "settings.enc"),
+        &serde_json::to_vec(settings).map_err(|error| error.to_string())?,
+        crypto,
+    )?;
+    prune_checkpoints(store, crypto, maximum)
+}
+
+fn load_snapshot(dir: &Path, crypto: &LedgerCrypto) -> Result<BTreeMap<String, Vec<u8>>, String> {
+    let bytes = read_encrypted(&dir.join("snapshot.enc"), crypto)?;
+    bincode::deserialize(&bytes)
+        .map_err(|_| "The encrypted checkpoint snapshot could not be read.".to_string())
+}
+
+fn save_snapshot(
+    files: &BTreeMap<String, Vec<u8>>,
+    dir: &Path,
+    crypto: &LedgerCrypto,
+) -> Result<(), String> {
+    let bytes = bincode::serialize(files).map_err(|error| error.to_string())?;
+    write_encrypted(&dir.join("snapshot.enc"), &bytes, crypto)
+}
+
+fn load_baseline(
+    project_store: &Path,
+    crypto: &LedgerCrypto,
+) -> Result<Option<BTreeMap<String, Vec<u8>>>, String> {
+    let path = storage_path(project_store, "baseline.enc");
+    if !path.exists() {
+        return Ok(None);
+    }
+    let bytes = read_encrypted(&path, crypto)?;
+    bincode::deserialize(&bytes)
+        .map(Some)
+        .map_err(|_| "The encrypted retention baseline could not be read.".to_string())
+}
+
+fn save_baseline(
+    project_store: &Path,
+    files: &BTreeMap<String, Vec<u8>>,
+    crypto: &LedgerCrypto,
+) -> Result<(), String> {
+    let bytes = bincode::serialize(files).map_err(|error| error.to_string())?;
+    write_encrypted(&storage_path(project_store, "baseline.enc"), &bytes, crypto)
 }
 
 fn text_lines(bytes: &[u8]) -> Option<Vec<String>> {
@@ -203,18 +562,6 @@ fn changes_between(
         .collect()
 }
 
-fn save_snapshot(files: &BTreeMap<String, Vec<u8>>, dir: &Path) -> Result<(), String> {
-    let root = dir.join("files");
-    for (relative, content) in files {
-        let target = root.join(relative);
-        if let Some(parent) = target.parent() {
-            fs::create_dir_all(parent).map_err(|error| error.to_string())?;
-        }
-        fs::write(target, content).map_err(|error| error.to_string())?;
-    }
-    Ok(())
-}
-
 fn checkpoint_dirs(project_store: &Path) -> Result<Vec<PathBuf>, String> {
     if !project_store.exists() {
         return Ok(Vec::new());
@@ -223,66 +570,107 @@ fn checkpoint_dirs(project_store: &Path) -> Result<Vec<PathBuf>, String> {
         .map_err(|error| error.to_string())?
         .filter_map(Result::ok)
         .map(|entry| entry.path())
-        .filter(|path| path.is_dir() && path.join("manifest.json").exists())
+        .filter(|path| path.is_dir() && path.join("manifest.enc").exists())
         .collect();
     dirs.sort();
     Ok(dirs)
 }
 
-fn read_manifest(dir: &Path) -> Result<Checkpoint, String> {
-    let bytes = fs::read(dir.join("manifest.json")).map_err(|error| error.to_string())?;
-    serde_json::from_slice(&bytes).map_err(|error| error.to_string())
+fn read_manifest(dir: &Path, crypto: &LedgerCrypto) -> Result<Checkpoint, String> {
+    serde_json::from_slice(&read_encrypted(&dir.join("manifest.enc"), crypto)?)
+        .map_err(|_| "The encrypted checkpoint manifest could not be read.".to_string())
 }
 
-fn list_manifests(project_store: &Path) -> Result<Vec<Checkpoint>, String> {
+fn write_manifest(
+    dir: &Path,
+    checkpoint: &Checkpoint,
+    crypto: &LedgerCrypto,
+) -> Result<(), String> {
+    write_encrypted(
+        &dir.join("manifest.enc"),
+        &serde_json::to_vec(checkpoint).map_err(|error| error.to_string())?,
+        crypto,
+    )
+}
+
+fn list_manifests(project_store: &Path, crypto: &LedgerCrypto) -> Result<Vec<Checkpoint>, String> {
     checkpoint_dirs(project_store)?
         .iter()
-        .map(|dir| read_manifest(dir))
+        .map(|dir| read_manifest(dir, crypto))
         .collect()
+}
+
+fn prune_checkpoints(
+    project_store: &Path,
+    crypto: &LedgerCrypto,
+    retention: usize,
+) -> Result<(), String> {
+    validate_retention(retention, true)?;
+    let mut dirs = checkpoint_dirs(project_store)?;
+    while dirs.len() > retention {
+        let oldest = dirs.remove(0);
+        let baseline = load_snapshot(&oldest, crypto)?;
+        // Preserve the exact predecessor for the first retained checkpoint before
+        // removing an old checkpoint. This keeps selective reversal safe at the
+        // retention boundary without retaining its manifest in the visible ledger.
+        save_baseline(project_store, &baseline, crypto)?;
+        fs::remove_dir_all(oldest).map_err(|error| error.to_string())?;
+    }
+    Ok(())
+}
+
+fn previous_snapshot(
+    project_store: &Path,
+    dirs: &[PathBuf],
+    index: usize,
+    crypto: &LedgerCrypto,
+) -> Result<Option<BTreeMap<String, Vec<u8>>>, String> {
+    if index > 0 {
+        return load_snapshot(&dirs[index - 1], crypto).map(Some);
+    }
+    load_baseline(project_store, crypto)
 }
 
 fn write_checkpoint(
     project_path: &Path,
     project_store: &Path,
-    intent: String,
-    commands: Vec<String>,
-    safety: bool,
-    files_override: Option<Vec<FileChange>>,
+    crypto: &LedgerCrypto,
+    retention: usize,
+    write: CheckpointWrite,
 ) -> Result<Vec<Checkpoint>, String> {
     let current = read_project(project_path)?;
     let dirs = checkpoint_dirs(project_store)?;
     let previous = dirs
         .last()
-        .map(|dir| load_snapshot(dir))
+        .map(|dir| load_snapshot(dir, crypto))
         .transpose()?
         .unwrap_or_default();
-    let changes = files_override.unwrap_or_else(|| changes_between(&previous, &current));
+    let changes = write
+        .files_override
+        .unwrap_or_else(|| changes_between(&previous, &current));
     let id = checkpoint_id(project_store)?;
     let checkpoint_dir = project_store.join(&id);
     fs::create_dir_all(&checkpoint_dir).map_err(|error| error.to_string())?;
-    save_snapshot(&current, &checkpoint_dir)?;
+    save_snapshot(&current, &checkpoint_dir, crypto)?;
     let checkpoint = Checkpoint {
         id,
-        intent,
-        detail: if safety {
+        intent: write.intent,
+        detail: if write.safety {
             "Saved automatically before selected files were reversed.".into()
         } else {
             "Captured from the selected local project folder.".into()
         },
         created_at: clock_label(),
-        commands,
+        commands: write.commands,
         files: changes,
         checks: "Not run by the ledger".into(),
         check_passed: true,
-        safety,
+        safety: write.safety,
         project_path: project_path.to_string_lossy().into_owned(),
     };
-    fs::write(
-        checkpoint_dir.join("manifest.json"),
-        serde_json::to_vec_pretty(&checkpoint).map_err(|error| error.to_string())?,
-    )
-    .map_err(|error| error.to_string())?;
-    list_manifests(project_store)
+    write_manifest(&checkpoint_dir, &checkpoint, crypto)?;
+    prune_checkpoints(project_store, crypto, retention)?;
+    list_manifests(project_store, crypto)
 }
 
 fn safe_relative(path: &str) -> Result<&Path, String> {
@@ -303,12 +691,56 @@ fn safe_relative(path: &str) -> Result<&Path, String> {
 #[tauri::command]
 fn capture_checkpoint(
     app: tauri::AppHandle,
+    input: CaptureCheckpointInput,
+) -> Result<LedgerResponse, String> {
+    let project_path = fs::canonicalize(Path::new(&input.path)).map_err(|_| {
+        "The project folder was not found. Check the full path and try again.".to_string()
+    })?;
+    let base = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|error| error.to_string())?;
+    let store = base.join("ledgers").join(project_key(&project_path));
+    let (crypto, mut settings) =
+        open_ledger_store(&store, &input.passphrase, Some(input.retention), input.pro)?;
+    let policy = input.policy.trim().to_string();
+    if !policy.is_empty() && !input.pro {
+        return Err("A team policy note requires an active Pro license.".into());
+    }
+    if settings.policy != policy {
+        settings.policy = policy;
+        write_encrypted(
+            &storage_path(&store, "settings.enc"),
+            &serde_json::to_vec(&settings).map_err(|error| error.to_string())?,
+            &crypto,
+        )?;
+    }
+    let ledger = write_checkpoint(
+        &project_path,
+        &store,
+        &crypto,
+        settings.retention,
+        CheckpointWrite {
+            intent: input.intent,
+            commands: input.commands,
+            safety: false,
+            files_override: None,
+        },
+    )?;
+    Ok(LedgerResponse {
+        ledger,
+        retention: settings.retention,
+        policy: settings.policy,
+    })
+}
+
+#[tauri::command]
+fn load_ledger(
+    app: tauri::AppHandle,
     path: String,
-    intent: String,
-    commands: Vec<String>,
+    passphrase: String,
     pro: bool,
-    retention: usize,
-) -> Result<Vec<Checkpoint>, String> {
+) -> Result<LedgerResponse, String> {
     let project_path = fs::canonicalize(Path::new(&path)).map_err(|_| {
         "The project folder was not found. Check the full path and try again.".to_string()
     })?;
@@ -317,22 +749,13 @@ fn capture_checkpoint(
         .app_local_data_dir()
         .map_err(|error| error.to_string())?;
     let store = base.join("ledgers").join(project_key(&project_path));
-    fs::create_dir_all(&store).map_err(|error| error.to_string())?;
-    let _ = (pro, retention);
-    write_checkpoint(&project_path, &store, intent, commands, false, None)?;
-    list_manifests(&store)
-}
-
-#[tauri::command]
-fn load_ledger(app: tauri::AppHandle, path: String) -> Result<Vec<Checkpoint>, String> {
-    let project_path = fs::canonicalize(Path::new(&path)).map_err(|_| {
-        "The project folder was not found. Check the full path and try again.".to_string()
-    })?;
-    let base = app
-        .path()
-        .app_local_data_dir()
-        .map_err(|error| error.to_string())?;
-    list_manifests(&base.join("ledgers").join(project_key(&project_path)))
+    let (crypto, mut settings) = open_ledger_store(&store, &passphrase, None, true)?;
+    enforce_plan_retention(&store, &crypto, &mut settings, pro)?;
+    Ok(LedgerResponse {
+        ledger: list_manifests(&store, &crypto)?,
+        retention: settings.retention,
+        policy: settings.policy,
+    })
 }
 
 #[tauri::command]
@@ -341,6 +764,8 @@ fn restore_files(
     path: String,
     checkpoint_id: String,
     files: Vec<String>,
+    passphrase: String,
+    pro: bool,
 ) -> Result<Vec<Checkpoint>, String> {
     let project_path = fs::canonicalize(Path::new(&path)).map_err(|error| error.to_string())?;
     let base = app
@@ -348,12 +773,23 @@ fn restore_files(
         .app_local_data_dir()
         .map_err(|error| error.to_string())?;
     let store = base.join("ledgers").join(project_key(&project_path));
-    restore_files_in_store(&project_path, &store, &checkpoint_id, &files)
+    let (crypto, mut settings) = open_ledger_store(&store, &passphrase, None, true)?;
+    enforce_plan_retention(&store, &crypto, &mut settings, pro)?;
+    restore_files_in_store(
+        &project_path,
+        &store,
+        &crypto,
+        settings.retention,
+        &checkpoint_id,
+        &files,
+    )
 }
 
 fn restore_files_in_store(
     project_path: &Path,
     store: &Path,
+    crypto: &LedgerCrypto,
+    retention: usize,
     checkpoint_id: &str,
     files: &[String],
 ) -> Result<Vec<Checkpoint>, String> {
@@ -365,10 +801,10 @@ fn restore_files_in_store(
         .iter()
         .position(|dir| dir.file_name().and_then(|name| name.to_str()) == Some(checkpoint_id))
         .ok_or("The selected checkpoint no longer exists.")?;
-    if index == 0 {
+    if index == 0 && load_baseline(store, crypto)?.is_none() {
         return Err("The first checkpoint has no earlier state to restore.".into());
     }
-    let source_manifest = read_manifest(&dirs[index])?;
+    let source_manifest = read_manifest(&dirs[index], crypto)?;
     let mut safety_files = Vec::with_capacity(files.len());
     for relative in files {
         safe_relative(relative)?;
@@ -388,21 +824,27 @@ fn restore_files_in_store(
             });
         }
     }
+    let restore_from = if source_manifest.safety {
+        load_snapshot(&dirs[index], crypto)?
+    } else {
+        previous_snapshot(store, &dirs, index, crypto)?
+            .ok_or("The earlier checkpoint required for this reversal is no longer available.")?
+    };
+    // Resolve the earlier state before writing the safety checkpoint. A tight
+    // retention policy may prune the source checkpoint during that write, but
+    // must never change what the user asked to restore in this operation.
     write_checkpoint(
         project_path,
         store,
-        "Safety checkpoint before reversal".into(),
-        vec!["No commands run".into()],
-        true,
-        Some(safety_files),
+        crypto,
+        retention,
+        CheckpointWrite {
+            intent: "Safety checkpoint before reversal".into(),
+            commands: vec!["No commands run".into()],
+            safety: true,
+            files_override: Some(safety_files),
+        },
     )?;
-    // A safety checkpoint stores the exact pre-reversal bytes. Selecting it must
-    // restore that snapshot, rather than merely replaying its earlier neighbour.
-    let restore_from = if source_manifest.safety {
-        load_snapshot(&dirs[index])?
-    } else {
-        load_snapshot(&dirs[index - 1])?
-    };
     for relative in files {
         let target = project_path.join(safe_relative(relative)?);
         if let Some(content) = restore_from.get(relative) {
@@ -416,7 +858,7 @@ fn restore_files_in_store(
                 .map_err(|error| format!("Could not remove {relative}: {error}"))?;
         }
     }
-    list_manifests(store)
+    list_manifests(store, crypto)
 }
 
 fn delete_ledger_store(store: &Path) -> Result<(), String> {
@@ -437,7 +879,12 @@ fn write_sample_files(root: &Path, files: &[(&str, &str)]) -> Result<(), String>
     Ok(())
 }
 
-fn load_bundled_sample(base: &Path) -> Result<(PathBuf, Vec<Checkpoint>), String> {
+fn load_bundled_sample(
+    base: &Path,
+    passphrase: &str,
+    retention: usize,
+    pro: bool,
+) -> Result<(PathBuf, Vec<Checkpoint>, usize), String> {
     let project = base.join("sample-project");
     if project.exists() {
         fs::remove_dir_all(&project).map_err(|error| error.to_string())?;
@@ -445,6 +892,7 @@ fn load_bundled_sample(base: &Path) -> Result<(PathBuf, Vec<Checkpoint>), String
     fs::create_dir_all(&project).map_err(|error| error.to_string())?;
     let store = base.join("ledgers").join(project_key(&project));
     delete_ledger_store(&store)?;
+    let (crypto, settings) = open_ledger_store(&store, passphrase, Some(retention), pro)?;
     write_sample_files(
         &project,
         &[
@@ -465,10 +913,14 @@ fn load_bundled_sample(base: &Path) -> Result<(PathBuf, Vec<Checkpoint>), String
     write_checkpoint(
         &project,
         &store,
-        "Baseline before session refactor".into(),
-        vec!["npm test -- session".into()],
-        false,
-        None,
+        &crypto,
+        settings.retention,
+        CheckpointWrite {
+            intent: "Baseline before session refactor".into(),
+            commands: vec!["npm test -- session".into()],
+            safety: false,
+            files_override: None,
+        },
     )?;
     write_sample_files(
         &project,
@@ -482,12 +934,16 @@ fn load_bundled_sample(base: &Path) -> Result<(PathBuf, Vec<Checkpoint>), String
     let ledger = write_checkpoint(
         &project,
         &store,
-        "Refactor session refresh".into(),
-        vec!["npm test -- session".into(), "npm test -- editor".into()],
-        false,
-        None,
+        &crypto,
+        settings.retention,
+        CheckpointWrite {
+            intent: "Refactor session refresh".into(),
+            commands: vec!["npm test -- session".into(), "npm test -- editor".into()],
+            safety: false,
+            files_override: None,
+        },
     )?;
-    Ok((project, ledger))
+    Ok((project, ledger, settings.retention))
 }
 
 #[derive(Serialize)]
@@ -495,18 +951,28 @@ fn load_bundled_sample(base: &Path) -> Result<(PathBuf, Vec<Checkpoint>), String
 struct SampleProject {
     path: String,
     ledger: Vec<Checkpoint>,
+    retention: usize,
+    policy: String,
 }
 
 #[tauri::command]
-fn load_sample_project(app: tauri::AppHandle, _reset: bool) -> Result<SampleProject, String> {
+fn load_sample_project(
+    app: tauri::AppHandle,
+    _reset: bool,
+    passphrase: String,
+    retention: usize,
+    pro: bool,
+) -> Result<SampleProject, String> {
     let base = app
         .path()
         .app_local_data_dir()
         .map_err(|error| error.to_string())?;
-    let (path, ledger) = load_bundled_sample(&base)?;
+    let (path, ledger, saved_retention) = load_bundled_sample(&base, &passphrase, retention, pro)?;
     Ok(SampleProject {
         path: path.to_string_lossy().into_owned(),
         ledger,
+        retention: saved_retention,
+        policy: String::new(),
     })
 }
 
@@ -528,6 +994,7 @@ fn export_patch(
     path: String,
     checkpoint_id: String,
     files: Vec<String>,
+    passphrase: String,
 ) -> Result<String, String> {
     let project_path = fs::canonicalize(Path::new(&path)).map_err(|error| error.to_string())?;
     let base = app
@@ -535,17 +1002,14 @@ fn export_patch(
         .app_local_data_dir()
         .map_err(|error| error.to_string())?;
     let store = base.join("ledgers").join(project_key(&project_path));
+    let (crypto, _) = open_ledger_store(&store, &passphrase, None, true)?;
     let dirs = checkpoint_dirs(&store)?;
     let index = dirs
         .iter()
         .position(|dir| dir.file_name().and_then(|name| name.to_str()) == Some(&checkpoint_id))
         .ok_or("The selected checkpoint no longer exists.")?;
-    let current = load_snapshot(&dirs[index])?;
-    let previous = if index > 0 {
-        load_snapshot(&dirs[index - 1])?
-    } else {
-        BTreeMap::new()
-    };
+    let current = load_snapshot(&dirs[index], &crypto)?;
+    let previous = previous_snapshot(&store, &dirs, index, &crypto)?.unwrap_or_default();
     let patch = patch_text(&previous, &current, &files);
     let export_dir = base.join("exports");
     fs::create_dir_all(&export_dir).map_err(|error| error.to_string())?;
@@ -669,24 +1133,26 @@ fn export_encrypted(
     checkpoint_id: String,
     files: Vec<String>,
     passphrase: String,
+    ledger_passphrase: String,
+    pro: bool,
 ) -> Result<String, String> {
+    if !pro {
+        return Err("An active Pro license is required for encrypted recovery export.".into());
+    }
     let project_path = fs::canonicalize(Path::new(&path)).map_err(|error| error.to_string())?;
     let base = app
         .path()
         .app_local_data_dir()
         .map_err(|error| error.to_string())?;
     let store = base.join("ledgers").join(project_key(&project_path));
+    let (crypto, _) = open_ledger_store(&store, &ledger_passphrase, None, true)?;
     let dirs = checkpoint_dirs(&store)?;
     let index = dirs
         .iter()
         .position(|dir| dir.file_name().and_then(|name| name.to_str()) == Some(&checkpoint_id))
         .ok_or("The selected checkpoint no longer exists.")?;
-    let current = load_snapshot(&dirs[index])?;
-    let previous = if index > 0 {
-        load_snapshot(&dirs[index - 1])?
-    } else {
-        BTreeMap::new()
-    };
+    let current = load_snapshot(&dirs[index], &crypto)?;
+    let previous = previous_snapshot(&store, &dirs, index, &crypto)?.unwrap_or_default();
     let encrypted = encrypt_bytes(
         patch_text(&previous, &current, &files).as_bytes(),
         &passphrase,
@@ -732,6 +1198,36 @@ fn import_encrypted_recovery(
     Ok(target.to_string_lossy().into_owned())
 }
 
+#[tauri::command]
+fn verify_license(license: String) -> Result<LicenseVerdict, String> {
+    if license.trim().is_empty() {
+        return Err("Paste a Sociobot license before verifying it.".into());
+    }
+    let mut endpoint =
+        reqwest::Url::parse("https://api.sociobot.in/api/v1/products/agent-change-recovery/verify")
+            .map_err(|_| "The license verification address is invalid.".to_string())?;
+    endpoint
+        .query_pairs_mut()
+        .append_pair("license", license.trim());
+    let response = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()
+        .map_err(|_| {
+            "License verification could not start. Try again when you are online.".to_string()
+        })?
+        .get(endpoint)
+        .send()
+        .map_err(|_| {
+            "License verification is unavailable. Try again when you are online.".to_string()
+        })?;
+    if !response.status().is_success() {
+        return Err("License verification is unavailable. Try again later.".into());
+    }
+    response
+        .json::<LicenseVerdict>()
+        .map_err(|_| "The license service returned an unreadable response.".to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -742,6 +1238,7 @@ pub fn run() {
             export_patch,
             export_encrypted,
             import_encrypted_recovery,
+            verify_license,
             delete_ledger,
             load_sample_project
         ])
@@ -757,6 +1254,25 @@ mod tests {
         net::TcpListener,
         process::{Command, Stdio},
     };
+
+    const TEST_PASSPHRASE: &str = "correct horse battery staple";
+
+    fn test_crypto(store: &Path) -> LedgerCrypto {
+        open_ledger_store(store, TEST_PASSPHRASE, Some(FREE_RETENTION_MAX), false)
+            .unwrap()
+            .0
+    }
+
+    macro_rules! normal_write {
+        ($intent:expr, $commands:expr) => {
+            CheckpointWrite {
+                intent: $intent.into(),
+                commands: $commands,
+                safety: false,
+                files_override: None,
+            }
+        };
+    }
 
     #[test]
     fn ignores_generated_folders() {
@@ -936,25 +1452,24 @@ mod tests {
         let root = tempfile::tempdir().unwrap();
         let project = root.path().join("project");
         let store = root.path().join("ledger");
+        let crypto = test_crypto(&store);
         fs::create_dir_all(&project).unwrap();
         fs::write(project.join("session.ts"), "before\n").unwrap();
         write_checkpoint(
             &project,
             &store,
-            "Fix session refresh".into(),
-            vec!["npm test".into()],
-            false,
-            None,
+            &crypto,
+            FREE_RETENTION_MAX,
+            normal_write!("Fix session refresh", vec!["npm test".into()]),
         )
         .unwrap();
         fs::write(project.join("session.ts"), "after\n").unwrap();
         let checkpoint = write_checkpoint(
             &project,
             &store,
-            "Fix session refresh".into(),
-            vec!["npm test".into()],
-            false,
-            None,
+            &crypto,
+            FREE_RETENTION_MAX,
+            normal_write!("Fix session refresh", vec!["npm test".into()]),
         )
         .unwrap()
         .pop()
@@ -971,18 +1486,37 @@ mod tests {
         let root = tempfile::tempdir().unwrap();
         let project = root.path().join("project");
         let store = root.path().join("ledger");
+        let crypto = test_crypto(&store);
         fs::create_dir_all(&project).unwrap();
         fs::write(project.join("state.txt"), "one\n").unwrap();
-        let first =
-            write_checkpoint(&project, &store, "Baseline".into(), vec![], false, None).unwrap();
+        let first = write_checkpoint(
+            &project,
+            &store,
+            &crypto,
+            FREE_RETENTION_MAX,
+            normal_write!("Baseline", vec![]),
+        )
+        .unwrap();
         assert_eq!(first.last().unwrap().files.len(), 1);
         fs::write(project.join("state.txt"), "two\n").unwrap();
-        let second =
-            write_checkpoint(&project, &store, "Second".into(), vec![], false, None).unwrap();
+        let second = write_checkpoint(
+            &project,
+            &store,
+            &crypto,
+            FREE_RETENTION_MAX,
+            normal_write!("Second", vec![]),
+        )
+        .unwrap();
         assert_eq!(second.last().unwrap().files[0].path, "state.txt");
         fs::write(project.join("state.txt"), "three\n").unwrap();
-        let third =
-            write_checkpoint(&project, &store, "Third".into(), vec![], false, None).unwrap();
+        let third = write_checkpoint(
+            &project,
+            &store,
+            &crypto,
+            FREE_RETENTION_MAX,
+            normal_write!("Third", vec![]),
+        )
+        .unwrap();
         assert_eq!(
             third.last().unwrap().files[0].diff,
             vec!["- two", "+ three"]
@@ -996,9 +1530,11 @@ mod tests {
         let real = root.path().join("real-project");
         fs::create_dir_all(&real).unwrap();
         fs::write(real.join("sentinel.txt"), "real work").unwrap();
-        let (sample, ledger) = load_bundled_sample(root.path()).unwrap();
+        let (sample, ledger, retention) =
+            load_bundled_sample(root.path(), TEST_PASSPHRASE, FREE_RETENTION_MAX, false).unwrap();
         assert_ne!(sample, real);
         assert_eq!(ledger.len(), 2);
+        assert_eq!(retention, FREE_RETENTION_MAX);
         let changed = ledger.last().unwrap();
         assert!(changed
             .files
@@ -1007,6 +1543,13 @@ mod tests {
         restore_files_in_store(
             &sample,
             &root.path().join("ledgers").join(project_key(&sample)),
+            &open_encrypted_store(
+                &root.path().join("ledgers").join(project_key(&sample)),
+                TEST_PASSPHRASE,
+            )
+            .unwrap()
+            .0,
+            FREE_RETENTION_MAX,
             &changed.id,
             &["src/auth/session.ts".into()],
         )
@@ -1018,7 +1561,8 @@ mod tests {
             fs::read_to_string(real.join("sentinel.txt")).unwrap(),
             "real work"
         );
-        let (reset, reset_ledger) = load_bundled_sample(root.path()).unwrap();
+        let (reset, reset_ledger, _) =
+            load_bundled_sample(root.path(), TEST_PASSPHRASE, FREE_RETENTION_MAX, false).unwrap();
         assert_eq!(reset, sample);
         assert_eq!(reset_ledger.len(), 2);
     }
@@ -1029,16 +1573,16 @@ mod tests {
         let root = tempfile::tempdir().unwrap();
         let project = root.path().join("project");
         let store = root.path().join("ledger");
+        let crypto = test_crypto(&store);
         fs::create_dir_all(&project).unwrap();
         fs::write(project.join("alpha.txt"), "baseline alpha\n").unwrap();
         fs::write(project.join("keep.txt"), "keep baseline\n").unwrap();
         write_checkpoint(
             &project,
             &store,
-            "Baseline before agent".into(),
-            vec![],
-            false,
-            None,
+            &crypto,
+            FREE_RETENTION_MAX,
+            normal_write!("Baseline before agent", vec![]),
         )
         .unwrap();
         fs::write(project.join("alpha.txt"), "wrong alpha\n").unwrap();
@@ -1046,15 +1590,21 @@ mod tests {
         let captured = write_checkpoint(
             &project,
             &store,
-            "Agent changed both files".into(),
-            vec![],
-            false,
-            None,
+            &crypto,
+            FREE_RETENTION_MAX,
+            normal_write!("Agent changed both files", vec![]),
         )
         .unwrap();
         let changed = captured.last().unwrap().clone();
-        let restored =
-            restore_files_in_store(&project, &store, &changed.id, &["alpha.txt".into()]).unwrap();
+        let restored = restore_files_in_store(
+            &project,
+            &store,
+            &crypto,
+            FREE_RETENTION_MAX,
+            &changed.id,
+            &["alpha.txt".into()],
+        )
+        .unwrap();
         assert_eq!(
             fs::read_to_string(project.join("alpha.txt")).unwrap(),
             "baseline alpha\n"
@@ -1074,12 +1624,20 @@ mod tests {
             vec!["alpha.txt"]
         );
         assert_eq!(
-            load_snapshot(&store.join(&safety.id))
+            load_snapshot(&store.join(&safety.id), &crypto)
                 .unwrap()
                 .get("alpha.txt"),
             Some(&b"wrong alpha\n".to_vec())
         );
-        restore_files_in_store(&project, &store, &safety.id, &["alpha.txt".into()]).unwrap();
+        restore_files_in_store(
+            &project,
+            &store,
+            &crypto,
+            FREE_RETENTION_MAX,
+            &safety.id,
+            &["alpha.txt".into()],
+        )
+        .unwrap();
         assert_eq!(
             fs::read_to_string(project.join("alpha.txt")).unwrap(),
             "wrong alpha\n"
@@ -1091,14 +1649,141 @@ mod tests {
     }
 
     #[test]
+    // @claim:local-encryption
+    fn claim_local_encryption_keeps_project_content_out_of_ledger_files() {
+        let root = tempfile::tempdir().unwrap();
+        let project = root.path().join("project");
+        let store = root.path().join("ledger");
+        fs::create_dir_all(&project).unwrap();
+        let secret = "CRL-UNIQUE-LOCAL-SECRET-9817";
+        fs::write(project.join("secret.txt"), secret).unwrap();
+        let crypto = test_crypto(&store);
+        write_checkpoint(
+            &project,
+            &store,
+            &crypto,
+            FREE_RETENTION_MAX,
+            normal_write!("Capture a sensitive local change", vec![]),
+        )
+        .unwrap();
+        let mut bytes = Vec::new();
+        for entry in WalkDir::new(&store).into_iter().filter_map(Result::ok) {
+            if entry.file_type().is_file() {
+                bytes.extend(fs::read(entry.path()).unwrap());
+            }
+        }
+        assert!(!bytes
+            .windows(secret.len())
+            .any(|window| window == secret.as_bytes()));
+        assert!(checkpoint_dirs(&store)
+            .unwrap()
+            .iter()
+            .all(|dir| dir.join("snapshot.enc").exists() && dir.join("manifest.enc").exists()));
+        assert_eq!(
+            load_snapshot(&checkpoint_dirs(&store).unwrap()[0], &crypto)
+                .unwrap()
+                .get("secret.txt"),
+            Some(&secret.as_bytes().to_vec())
+        );
+    }
+
+    #[test]
+    // @claim:retention-policy
+    fn claim_retention_prunes_old_checkpoints_and_keeps_boundary_recovery() {
+        let root = tempfile::tempdir().unwrap();
+        let project = root.path().join("project");
+        let store = root.path().join("ledger");
+        fs::create_dir_all(&project).unwrap();
+        let crypto = open_ledger_store(&store, TEST_PASSPHRASE, Some(2), false)
+            .unwrap()
+            .0;
+        fs::write(project.join("state.txt"), "baseline\n").unwrap();
+        write_checkpoint(
+            &project,
+            &store,
+            &crypto,
+            2,
+            normal_write!("Baseline", vec![]),
+        )
+        .unwrap();
+        fs::write(project.join("state.txt"), "wrong\n").unwrap();
+        let second = write_checkpoint(
+            &project,
+            &store,
+            &crypto,
+            2,
+            normal_write!("Wrong agent change", vec![]),
+        )
+        .unwrap();
+        let source = second.last().unwrap().clone();
+        fs::write(project.join("state.txt"), "later change\n").unwrap();
+        write_checkpoint(
+            &project,
+            &store,
+            &crypto,
+            2,
+            normal_write!("Later change", vec![]),
+        )
+        .unwrap();
+        assert_eq!(checkpoint_dirs(&store).unwrap().len(), 2);
+        assert!(load_baseline(&store, &crypto).unwrap().is_some());
+        restore_files_in_store(
+            &project,
+            &store,
+            &crypto,
+            2,
+            &source.id,
+            &["state.txt".into()],
+        )
+        .unwrap();
+        assert_eq!(
+            fs::read_to_string(project.join("state.txt")).unwrap(),
+            "baseline\n"
+        );
+        assert_eq!(checkpoint_dirs(&store).unwrap().len(), 2);
+    }
+
+    #[test]
+    // @claim:team-policy-note
+    fn claim_team_policy_note_is_encrypted_with_the_ledger() {
+        let root = tempfile::tempdir().unwrap();
+        let store = root.path().join("ledger");
+        let (crypto, mut settings) =
+            open_ledger_store(&store, TEST_PASSPHRASE, Some(30), true).unwrap();
+        settings.policy = "Require a reviewer for authentication reversals.".into();
+        write_encrypted(
+            &storage_path(&store, "settings.enc"),
+            &serde_json::to_vec(&settings).unwrap(),
+            &crypto,
+        )
+        .unwrap();
+        let (_, reopened) = open_encrypted_store(&store, TEST_PASSPHRASE).unwrap();
+        assert_eq!(reopened.retention, 30);
+        assert_eq!(
+            reopened.policy,
+            "Require a reviewer for authentication reversals."
+        );
+        let raw = fs::read(storage_path(&store, "settings.enc")).unwrap();
+        assert!(!raw.windows(9).any(|window| window == b"reviewer"));
+    }
+
+    #[test]
     // @claim:ledger-deletion
     fn claim_ledger_deletion_removes_snapshots_not_project_files() {
         let root = tempfile::tempdir().unwrap();
         let project = root.path().join("project");
         let store = root.path().join("ledger");
+        let crypto = test_crypto(&store);
         fs::create_dir_all(&project).unwrap();
         fs::write(project.join("keep.txt"), "project stays\n").unwrap();
-        write_checkpoint(&project, &store, "Capture".into(), vec![], false, None).unwrap();
+        write_checkpoint(
+            &project,
+            &store,
+            &crypto,
+            FREE_RETENTION_MAX,
+            normal_write!("Capture", vec![]),
+        )
+        .unwrap();
         assert!(store.exists());
         delete_ledger_store(&store).unwrap();
         assert!(!store.exists());

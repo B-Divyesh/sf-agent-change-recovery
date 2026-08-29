@@ -1,66 +1,30 @@
-# Handoff — independent verification 7: FAIL
-
-Candidate `dd6a9df194c12e6c1ca38880571d3272800024e6` was independently checked against `https://agent-change-recovery.sociobot.in` on 2026-08-29.
-
-**Status: FAIL — do not release.**
-
-The demo, browser/native suites, deployed site, accessibility, privacy request log, release artifacts, and checksum verification were successful. All 16 declared claim tests passed from a fresh clone. Production JS/CSS hashes match the candidate build.
-
-Release blockers:
-
-1. Routine checkpoint snapshots are stored as plaintext files in app data, violating the brief's local-encryption constraint.
-2. Retention is fixed to `7` in the UI and explicitly discarded by the Rust command, so it is neither configurable nor enforced.
-3. The claims manifest omits several public README/product claims, including large-file skipping, safety checkpoints, ledger deletion, and chosen-folder scope.
-4. The researched `$15/developer/month` subscription tier is absent; live copy says no payment is required.
-
-Full command results, live behavior, headers, responsive/keyboard/a11y checks, release checksum proof, defects, and repair steps are in `.factory/verification-7.md`.
-
-Local package qualification: `npm run build` passed. `npm run tauri build` needs `CI=true` in this runner (inherited `CI=1` is rejected by Tauri); its AppImage stage cannot run here because `/dev/fuse` is unavailable. The published v0.1.4 AppImage exists, and the downloaded Windows installer matched `SHA256SUMS`.
-
----
-
-## Historical builder handoff (superseded by the independent FAIL above)
+# Handoff — repair 6
 
 ## Delivered
 
-- Repaired every F-1-1 through F-1-44 finding from `review-1.md`.
-- Added direct `?demo=1` entry, persistent isolated-demo controls, exit cleanup, and a release-resolved real-app handoff.
-- Added Tauri **Load sample project**, **Reset sample project**, and **Open local ledger** paths.
-- Removed unavailable checkout and license claims from the release.
-- Rewrote first-screen, product, legal, README, metadata, and 404 copy in plain language.
-- Added route OG/Twitter updates, real static 404 metadata/skeleton, manual history restoration, and 390px first-screen coverage.
-- Added claims ledger coverage for every remaining visitor promise.
-- Updated the desktop release to `v0.1.4` and corrected Ubuntu AppImage workflow prerequisites.
-
-## Commits and deployment
-
-- Product repair: `34a462c`.
-- CI/release repair: `c5a801d`, `0556716`.
-- Pushed `main` and release tags `v0.1.3`, `v0.1.4` to `origin`.
-- GitHub quality run `33261873620`: **success**.
-- GitHub desktop release run `33261874466`: **success**. Release `v0.1.4` contains macOS arm64/x64, Windows MSI/EXE, and Linux AppImage/DEB/RPM assets plus `SHA256SUMS` and `latest.json`.
-- Static deployment: deployed the freshly built `dist/site` to the configured Azure Static Web App `sf-agent-change-recovery` production environment. Live asset timestamp: 2026-08-29 16:16:43 UTC.
+- Replaced routine plaintext checkpoint files with AES-256-GCM encrypted snapshots and manifests. Each ledger uses a user-provided passphrase, Argon2-derived key, random per-file nonce, and encrypted settings/key check. The passphrase remains only in app memory.
+- Added migration for the candidate's legacy plaintext ledger on its next passphrase-backed open. It writes encrypted replacements before removing the old manifest and snapshot files.
+- Added a visible retention selector: free ledgers keep 2 or 7 checkpoints; an active Pro license enables 30 or 90. Pruning writes an encrypted baseline before removing the oldest visible checkpoint, so the oldest retained change can still be selectively reversed.
+- Added a $15/developer/month Pro plan through Sociobot checkout, URL license capture, local restore-purchase form, once-per-day cached verification, and a native Tauri verifier for desktop origins. Pro enables extended retention, an encrypted team policy note, and password-protected recovery export. Standard patch export and safety recovery remain free.
+- Completed the claims ledger: 27 declared claims now include local encryption, retention, policy notes, license behavior, chosen-folder scope, size/Git exclusions, safety checkpoints, deletion, and encrypted recovery behavior.
+- Bumped the desktop/site release to `0.1.5`, updated the service-worker cache to `recovery-ledger-v5`, README, privacy/terms, demo documentation, and copy audit.
 
 ## Verification
 
-- Clean clone at `34a462c`: `npm ci`, then every exact command in `.factory/claims.json` completed successfully.
-- `npm test`: 29 browser tests passed locally. The GitHub fresh runner also passed this suite.
-- `cargo test --manifest-path src-tauri/Cargo.toml`: 16 native tests passed locally.
-- `cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings`: passed.
-- `cargo fmt --manifest-path src-tauri/Cargo.toml -- --check`: passed.
-- `npm run build`: passed; `dist/site` generated. Initial JavaScript gzip: 10.96 KB. CSS gzip: 4.31 KB.
-- `scripts/verify-url.sh` passed for local production `/`, `/?demo=1`, `/privacy`, and `/terms` with title, language, main, H1, alt, and console checks.
-- Playwright Axe scans are part of `npm test`; no serious or critical violations.
-- Local evidence screenshots: `.factory/evidence/polish-1-landing-mobile.png` and `.factory/evidence/polish-1-demo-mobile.png`.
-- Cold live checks passed on `https://agent-change-recovery.sociobot.in/`: `scripts/verify-url.sh` for `/`, `/?demo=1`, `/privacy`, and `/terms`; static files (`favicon`, Apple icon, robots, sitemap, 404 CSS/JS) all returned 200; `/missing-sheet` returned 404.
-- Live demo controls appeared and exit removed all `demo:` storage keys before `/app`. Its observed network origins were only the product origin and `api.github.com`. A first-visit live demo also reloaded offline through the service worker.
-- Live Playwright Axe scans at 390px found 0 serious or critical violations on `/`, `/?demo=1`, `/privacy`, `/terms`, and `/missing-sheet`.
-- Live evidence screenshots: `.factory/evidence/polish-1-live-landing-mobile.png` and `.factory/evidence/polish-1-live-demo-mobile.png`.
+- Clean install: `npm ci --include=dev` passed.
+- Browser suite: `npm test` passed — 30 Playwright tests, including desktop/390px behavior, keyboard dialog focus, route accessibility, service-worker offline reload, privacy request checks, and Playwright Axe scans with zero serious/critical findings.
+- Native suite: `cargo test --manifest-path src-tauri/Cargo.toml` passed — 19 tests.
+- Native quality: `cargo fmt --manifest-path src-tauri/Cargo.toml -- --check` and `cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings` passed.
+- Production site build: `npm run build` passed; `dist/site` contains 40.20 KB JavaScript (12.72 KB gzip) and 15.63 KB CSS (4.35 KB gzip).
+- Every declared claim command in `.factory/claims.json` was run from this clean install and passed. The 27th, `license-daily-verification`, is also covered by the final browser suite.
+- Local URL verifier passed for `/`, `/demo`, `/privacy`, and `/terms`: title, language, one main, one H1, image alts, and console were clean.
+- The standalone Axe CLI was attempted. Its bundled ChromeDriver targets Chrome 152 while the preinstalled Playwright Chromium is 145, so it cannot create a session in this container. The repository's Playwright Axe integration ran instead and passed serious/critical scans on every route.
+- Desktop package: `CI=true npm run tauri build -- --bundles deb` passed. It produced `src-tauri/target/release/bundle/deb/Change Recovery Ledger_0.1.5_amd64.deb` (5,517,170 bytes), whose SHA-256 is `bf090be7a449aa6e98b2bae50cf70a45df583712388e52d477f1b1d51ca0eaa2`.
 
-## Packaging note
+## Deployment and release
 
-The container has no `/dev/fuse`, so its local linuxdeploy helper cannot complete an AppImage. The workflow now installs Ubuntu 22.04’s `libfuse2` and sets `APPIMAGE_EXTRACT_AND_RUN=1`; its Linux AppImage build passed in GitHub Actions.
+The GitHub release workflow remains the source of signed-platform-independent macOS, Windows, and Linux artifacts. Tag `v0.1.5` after this repair is pushed so the workflow can attach all three platform builds, `SHA256SUMS`, and `latest.json`. The static site deployment must publish the freshly built `dist/site` to the configured `sf-agent-change-recovery` Static Web App.
 
-## Working tree
+## Known limitation
 
-Only pre-existing `graphify-out/` changes remain uncommitted. They were not modified or included in the repair.
+The desktop app deliberately does not retain a passphrase. If a user loses it, encrypted local checkpoint history cannot be opened. This is the intended privacy trade-off; users should keep normal Git history and backups.

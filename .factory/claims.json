@@ -28,11 +28,18 @@
     "sandbox": "fresh browser demo; wait for service worker; go offline; reload the sample ledger"
   },
   {
-    "id": "no-payment",
-    "claim": "No payment is required in this release.",
-    "where": "landing facts",
-    "test": "npm test -- --grep @claim:no-payment",
-    "sandbox": "fresh landing page; assert the release fact and absence of checkout or purchase actions"
+    "id": "pro-license",
+    "claim": "Pro costs $15 per developer each month and restores through a Sociobot license.",
+    "where": "landing pricing section and terms",
+    "test": "npm test -- --grep @claim:pro-license",
+    "sandbox": "fresh landing; mock Sociobot license verification; restore a license and assert active Pro status and the documented checkout URL"
+  },
+  {
+    "id": "license-daily-verification",
+    "claim": "The app verifies a saved Sociobot license no more than once each day.",
+    "where": "privacy policy and README",
+    "test": "npm test -- --grep @claim:license-daily-verification",
+    "sandbox": "fresh landing with a mocked valid license; reload after the first verification and assert only one verification request"
   },
   {
     "id": "local-privacy",
@@ -40,6 +47,62 @@
     "where": "landing facts, privacy policy, README",
     "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_local_privacy",
     "sandbox": "native fixture; capture unique chosen-folder data beside a sentinel and assert no outside or local network access"
+  },
+  {
+    "id": "local-encryption",
+    "claim": "Project snapshots and manifests are encrypted locally with a ledger passphrase that is not stored.",
+    "where": "landing facts, desktop capture form, privacy policy, README",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_local_encryption",
+    "sandbox": "native fixture; capture a unique secret; inspect every ledger file for its absence; reopen the encrypted snapshot with the passphrase"
+  },
+  {
+    "id": "retention-policy",
+    "claim": "You can choose how many recent checkpoints to keep, and old checkpoints are pruned without breaking boundary recovery.",
+    "where": "desktop capture form and README",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_retention_prunes_old_checkpoints_and_keeps_boundary_recovery",
+    "sandbox": "native fixture; retain two checkpoints, create three, and reverse the oldest retained change using its encrypted baseline"
+  },
+  {
+    "id": "team-policy-note",
+    "claim": "Pro stores a team policy note inside the encrypted local ledger.",
+    "where": "landing pricing section, desktop capture form, terms, README",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_team_policy_note_is_encrypted_with_the_ledger",
+    "sandbox": "native Pro fixture; save a policy note and assert it reopens through encryption but is absent from raw settings bytes"
+  },
+  {
+    "id": "encrypted-recovery-export",
+    "claim": "Pro exports a password-protected recovery file.",
+    "where": "landing pricing section, desktop ledger actions, terms, README",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_encrypted_export",
+    "sandbox": "native fixture; encrypt a patch and assert its unique plaintext is absent from the recovery bytes"
+  },
+  {
+    "id": "encrypted-recovery-import",
+    "claim": "Opening a password-protected recovery produces a patch for review without running it.",
+    "where": "desktop Pro recovery action",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_encrypted_import_opens_a_patch_without_running_it",
+    "sandbox": "native fixture; decrypt a recovery with its passphrase and assert a wrong passphrase is rejected"
+  },
+  {
+    "id": "chosen-folder-only",
+    "claim": "Records only the project folder you choose.",
+    "where": "README, landing page, privacy policy",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_chosen_folder_only",
+    "sandbox": "native fixture; capture a chosen folder beside an outside sentinel and assert only chosen-folder files are read"
+  },
+  {
+    "id": "large-file-skip",
+    "claim": "Skips files over 2 MB.",
+    "where": "README",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_large_file_skip",
+    "sandbox": "native fixture; capture a small file and a 2 MB-plus file, then assert only the small file is recorded"
+  },
+  {
+    "id": "git-metadata-exclusion",
+    "claim": "Git metadata is excluded from checkpoints.",
+    "where": "landing page, terms, README",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_git_metadata_exclusion",
+    "sandbox": "native fixture; capture a project with .git metadata and assert the metadata is absent from the recorded files"
   },
   {
     "id": "generated-folder-exclusions",
@@ -61,6 +124,20 @@
     "where": "landing how-it-works section and README",
     "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_checkpoint_comparison_uses_the_previous_snapshot",
     "sandbox": "native fixture; make three captures and assert each delta uses the prior snapshot"
+  },
+  {
+    "id": "reversible-safety-checkpoint",
+    "claim": "Creates a safety checkpoint before a selected-file reversal.",
+    "where": "landing page, demo recovery dialog, README",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_reversible_safety_checkpoint",
+    "sandbox": "native fixture; reverse one changed file and then restore it from the safety checkpoint without touching an unrelated file"
+  },
+  {
+    "id": "ledger-deletion",
+    "claim": "Deletes local checkpoint snapshots without changing project files.",
+    "where": "README and privacy policy",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_ledger_deletion_removes_snapshots_not_project_files",
+    "sandbox": "native fixture; delete a ledger store and assert its project sentinel remains"
   },
   {
     "id": "bundled-sample-project",

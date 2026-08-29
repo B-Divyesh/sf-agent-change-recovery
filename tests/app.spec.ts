@@ -6,7 +6,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 test.beforeEach(async ({ context }) => {
-  await context.addInitScript(() => localStorage.clear());
+  await context.addInitScript(() => {
+    // Playwright runs init scripts on every navigation. Keep reloads realistic:
+    // each test context starts clean, while state set by the app survives a reload.
+    if (!sessionStorage.getItem('acr-test-storage-cleared')) {
+      localStorage.clear();
+      sessionStorage.setItem('acr-test-storage-cleared', 'true');
+    }
+  });
 });
 
 test('@claim:selective-reversal reverses one selected file and keeps the others', async ({ page }) => {
@@ -91,10 +98,39 @@ test('@claim:offline-reload reloads the sample ledger offline', async ({ page, c
   await expect(page.getByText('You are offline. Saved ledgers and the demo still work.')).toBeVisible();
 });
 
-test('@claim:no-payment states that this release has no purchase action', async ({ page }) => {
+test('@claim:pro-license restores a Sociobot license and shows the documented subscription', async ({ page }) => {
+  const requests: string[] = [];
+  await page.route('https://api.sociobot.in/api/v1/products/agent-change-recovery/verify?license=sbk-test-license', route => {
+    requests.push(route.request().url());
+    return route.fulfill({ json: { valid: true, reason: 'ok', expires_at: null } });
+  });
+  await page.goto('/?license=sbk-test-license');
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByText('Pro license active on this device.')).toBeVisible();
+  await expect(page.getByRole('link', { name: /subscribe to pro/i })).toHaveAttribute('href', 'https://api.sociobot.in/api/v1/products/agent-change-recovery/checkout');
+  await expect(page.locator('.price')).toContainText('$15');
+  expect(requests).toEqual(['https://api.sociobot.in/api/v1/products/agent-change-recovery/verify?license=sbk-test-license']);
+  expect(await page.evaluate(() => localStorage.getItem('sb_license:agent-change-recovery'))).toBe('sbk-test-license');
+  await page.evaluate(() => localStorage.clear());
   await page.goto('/');
-  await expect(page.getByText('No payment is required in this release.')).toBeVisible();
-  await expect(page.getByRole('link', { name: /buy|checkout|payment/i })).toHaveCount(0);
+  await page.getByLabel('Have a license? Paste it').fill('sbk-test-license');
+  await page.getByRole('button', { name: 'Restore license' }).click();
+  await expect(page.getByText('Pro license active on this device.')).toBeVisible();
+  expect(requests).toHaveLength(2);
+});
+
+test('@claim:license-daily-verification checks a saved license once per day', async ({ page }) => {
+  let requests = 0;
+  await page.route('https://api.sociobot.in/api/v1/products/agent-change-recovery/verify?license=sbk-daily-license', route => {
+    requests += 1;
+    return route.fulfill({ json: { valid: true, reason: 'ok', expires_at: null } });
+  });
+  await page.goto('/?license=sbk-daily-license');
+  await expect(page.getByText('Pro license active on this device.')).toBeVisible();
+  await page.reload();
+  await expect(page.getByText('Pro license active on this device.')).toBeVisible();
+  await page.waitForTimeout(250);
+  expect(requests).toBe(1);
 });
 
 test('service worker installs the shipped shell, updates its cache, and keeps the demo offline', async ({ page, context }) => {
@@ -106,7 +142,7 @@ test('service worker installs the shipped shell, updates its cache, and keeps th
     const registration = await navigator.serviceWorker.getRegistration();
     await registration?.update();
     const keys = await caches.keys();
-    const cache = await caches.open('recovery-ledger-v4');
+    const cache = await caches.open('recovery-ledger-v5');
     return {
       active: registration?.active?.state,
       script: registration?.active?.scriptURL,
@@ -117,7 +153,7 @@ test('service worker installs the shipped shell, updates its cache, and keeps th
   });
   expect(installed.active).toBe('activated');
   expect(installed.script).toContain('/sw.js');
-  expect(installed.keys).toContain('recovery-ledger-v4');
+  expect(installed.keys).toContain('recovery-ledger-v5');
   expect(installed.cachedDemo).toBe(true);
   expect(installed.cachedShell).toBe(true);
   await context.setOffline(true);
@@ -184,7 +220,7 @@ test('mobile first screen shows the action result and all three facts', async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
   await expect(page.locator('.action-note')).toBeInViewport();
-  for (const text of ['Project files stay on this device.', 'The demo works offline after one visit.', 'No payment is required in this release.']) await expect(page.getByText(text, { exact: true })).toBeInViewport();
+  for (const text of ['Project files are encrypted locally.', 'The demo works offline after one visit.', 'Pro costs $15 per developer each month.']) await expect(page.getByText(text, { exact: true })).toBeInViewport();
 });
 
 test('mobile links and controls meet the 44px touch-target baseline', async ({ page }) => {
