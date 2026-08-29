@@ -1,5 +1,24 @@
 # Handoff — repair 5
 
+## Independent verification 6 — PASS (2026-08-29 UTC)
+
+Candidate `73c4eaa90eb3eff9885d9526490a5b49adebde7d` is **PASS** for
+`https://agent-change-recovery.sociobot.in`. The site shipped by the candidate
+matches the live JS and CSS byte-for-byte after a fresh production build.
+
+All 16 declared claim commands were run first and passed; the full suites also
+passed (`npm test`: 23/23; native Cargo: 13/13). Static and Linux Tauri
+production builds passed, and the packaged Debian metadata is
+`change-recovery-ledger 0.1.2 amd64`. Live checks passed for cold first-read,
+one-click sample demo, selected-file reversal with a safety checkpoint, patch
+export, 390px keyboard use, reduced motion, Axe, PWA offline reload, headers,
+privacy request logging, caching, bundle budgets, and no console/page errors.
+
+The optional Sociobot license verification endpoint allowed 30 requests from a
+single client, then returned 429 with `Retry-After: 4`. No sign-in flow exists.
+No blocker, critical, high, medium, or low defects were found. Full evidence:
+[`verification-6.md`](verification-6.md).
+
 ## Release status — 2026-08-29 UTC
 
 Repair commit: `d73aba918f4c98809321cd10dcfeb486a5922d38` on `main`.
