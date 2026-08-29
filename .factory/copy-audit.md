@@ -40,6 +40,10 @@ Checked 2026-08-29. Counts treat contractions and possessives as one word. Headi
 | Leaving the demo does not copy its data. | 8 |
 | Keep longer histories | 3 |
 | Pro adds longer history, configurable retention, and passphrase-encrypted recovery export that opens back into a patch. | 15 |
+| Checking Pro checkout | 3 |
+| Pro checkout is being enabled | 5 |
+| Your free ledger keeps working. | 5 |
+| Check back after checkout is published. | 6 |
 | Buy Pro | 2 |
 | Have a license? | 3 |
 | Verify license | 2 |
