@@ -23,6 +23,13 @@ test('@claim:selective-reversal reverses one selected file and keeps the others'
   await expect(page.getByText('src/account/profile.ts', { exact: true })).toBeVisible();
 });
 
+test('query demo entry opens the isolated sample in one request', async ({ page }) => {
+  await page.goto('/?demo=1');
+  await expect(page).toHaveURL(/\?demo=1$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Inspect the failed session change');
+  await expect(page.getByText('Demo — sample data, nothing is saved')).toBeVisible();
+});
+
 test('@claim:patch-export exports selected changes as a patch', async ({ page }) => {
   await page.goto('/demo');
   const downloadEvent = page.waitForEvent('download');
@@ -53,6 +60,14 @@ test('@claim:demo-isolation resets only demo namespaced data', async ({ page }) 
   await page.getByRole('button', { name: 'Reset demo' }).click();
   expect(await page.evaluate(() => localStorage.getItem('real:sentinel'))).toBe('keep');
   expect(await page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('demo:')))).toEqual([]);
+  await page.getByLabel('src/editor/autosave.ts').check();
+  await page.getByRole('button', { name: 'Reverse 2 selected files' }).click();
+  await page.getByRole('button', { name: 'Create checkpoint and reverse' }).click();
+  await page.getByRole('button', { name: 'Start for real' }).click();
+  await expect(page).toHaveURL(/\/app$/);
+  expect(await page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('demo:')))).toEqual([]);
+  expect(await page.evaluate(() => localStorage.getItem('real:sentinel'))).toBe('keep');
+  await expect(page.locator('#app-download-button')).toBeVisible();
 });
 
 test('demo recovery makes no cross-origin requests', async ({ page }) => {
@@ -74,6 +89,12 @@ test('@claim:offline-reload reloads the sample ledger offline', async ({ page, c
   await page.reload();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Inspect the failed session change');
   await expect(page.getByText('You are offline. Saved ledgers and the demo still work.')).toBeVisible();
+});
+
+test('@claim:no-payment states that this release has no purchase action', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByText('No payment is required in this release.')).toBeVisible();
+  await expect(page.getByRole('link', { name: /buy|checkout|payment/i })).toHaveCount(0);
 });
 
 test('service worker installs the shipped shell, updates its cache, and keeps the demo offline', async ({ page, context }) => {
@@ -104,30 +125,33 @@ test('service worker installs the shipped shell, updates its cache, and keeps th
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Inspect the failed session change');
 });
 
-test('@claim:price shows the exact Pro price without exposing an unpublished checkout', async ({ page }) => {
+test('@claim:platform-download selects exact assets for Linux, macOS, and Windows', async ({ browser }) => {
+  const assets = [
+    { name: 'Change.Recovery.Ledger_0.1.2_amd64.AppImage', browser_download_url: 'https://example.test/linux.AppImage' },
+    { name: 'Change.Recovery.Ledger_0.1.2_x64.dmg', browser_download_url: 'https://example.test/macos.dmg' },
+    { name: 'Change.Recovery.Ledger_0.1.2_x64-setup.exe', browser_download_url: 'https://example.test/windows.exe' }
+  ];
+  for (const [userAgent, expected] of [
+    ['Mozilla/5.0 (X11; Linux x86_64)', 'https://example.test/linux.AppImage'],
+    ['Mozilla/5.0 (Macintosh; Intel Mac OS X)', 'https://example.test/macos.dmg'],
+    ['Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'https://example.test/windows.exe']
+  ]) {
+    const context = await browser.newContext({ userAgent });
+    const page = await context.newPage();
+    await page.route('https://api.github.com/repos/B-Divyesh/sf-agent-change-recovery/releases/latest', route => route.fulfill({ json: { tag_name: 'v0.1.2', assets } }));
+    await page.goto('/');
+    await expect(page.locator('#download-button')).toHaveAttribute('href', expected);
+    await context.close();
+  }
+});
+
+test('@claim:release-request-privacy requests only the disclosed GitHub release API', async ({ page }) => {
+  const origins = new Set<string>();
+  page.on('request', request => origins.add(new URL(request.url()).origin));
+  await page.route('https://api.github.com/repos/B-Divyesh/sf-agent-change-recovery/releases/latest', route => route.fulfill({ json: { tag_name: 'v0.1.2', assets: [] } }));
   await page.goto('/');
-  await expect(page.locator('.price')).toContainText('$15');
-  await expect(page.getByText('Pro checkout is being enabled')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Buy Pro' })).toHaveCount(0);
-});
-
-test('checkout resolver only accepts the exact published Sociobot endpoint', () => {
-  const source = readFileSync('src/main.ts', 'utf8');
-  expect(source).toContain("checkout?.origin !== 'https://api.sociobot.in'");
-  expect(source).toContain("checkout.pathname !== `/api/v1/products/${slug}/checkout`");
-  expect(source).toContain("product.price_minor !== 1500");
-});
-
-test('@claim:free-safety-and-patch-export keeps safety and patch export available without a license', async ({ page }) => {
-  await page.goto('/demo');
-  await expect(page.getByRole('button', { name: 'Reverse 1 selected file' })).toBeEnabled();
-  await expect(page.getByRole('button', { name: 'Export selected patch' })).toBeEnabled();
-  const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export selected patch' }).click();
-  await download;
-  await page.getByRole('button', { name: 'Reverse 1 selected file' }).click();
-  await page.getByRole('button', { name: 'Create checkpoint and reverse' }).click();
-  await expect(page.getByRole('status').last()).toContainText('file was reversed');
+  await expect(page.locator('#download-status')).not.toHaveText('Checking published releases…');
+  expect([...origins].sort()).toEqual(['http://127.0.0.1:4173', 'https://api.github.com']);
 });
 
 for (const path of ['/', '/demo', '/app', '/privacy', '/terms', '/missing-sheet']) {
@@ -154,6 +178,13 @@ test('mobile landing has no horizontal overflow at 390px', async ({ page }) => {
   await page.goto('/');
   await expect.poll(() => page.locator('.hero-art').evaluate(node => getComputedStyle(node).marginInlineStart)).toBe('0px');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+test('mobile first screen shows the action result and all three facts', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await expect(page.locator('.action-note')).toBeInViewport();
+  for (const text of ['Project files stay on this device.', 'The demo works offline after one visit.', 'No payment is required in this release.']) await expect(page.getByText(text, { exact: true })).toBeInViewport();
 });
 
 test('mobile links and controls meet the 44px touch-target baseline', async ({ page }) => {
@@ -220,6 +251,40 @@ test('every route has its own title and history navigation works', async ({ page
   await expect(page).toHaveTitle('Privacy — Change Recovery Ledger');
   await page.goBack();
   await expect(page).toHaveTitle('Change Recovery Ledger — Reverse agent changes');
+  await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
+  await expect(page.locator('h1')).toBeInViewport();
+});
+
+test('route metadata updates title, canonical, Open Graph, and Twitter fields', async ({ page }) => {
+  await page.goto('/privacy');
+  await expect(page).toHaveTitle('Privacy — Change Recovery Ledger');
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://agent-change-recovery.sociobot.in/privacy');
+  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', 'Privacy — Change Recovery Ledger');
+  await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute('content', 'Privacy — Change Recovery Ledger');
+  const notFound = readFileSync('public/404.html', 'utf8');
+  for (const fragment of ['<header', '<footer', 'name="description"', 'rel="canonical"', 'property="og:title"', 'apple-touch-icon']) expect(notFound).toContain(fragment);
+});
+
+test('@claim:windows-installer verifies a checksum before starting the installer', () => {
+  const source = readFileSync('public/install.ps1', 'utf8');
+  expect(source).toContain('Get-FileHash');
+  expect(source).toContain('Start-Process');
+  expect(source.indexOf('Get-FileHash')).toBeLessThan(source.indexOf('Start-Process'));
+});
+
+test('@claim:unsigned-macos keeps macOS packaging unsigned until credentials are configured', () => {
+  const source = readFileSync('.github/workflows/release.yml', 'utf8');
+  expect(source).toContain('macos-latest');
+  expect(source).not.toMatch(/APPLE_CERTIFICATE|APPLE_SIGNING_IDENTITY|notar/i);
+});
+
+test('@claim:release-platforms declares macOS, Windows, Linux, checksums, and manifest publishing', () => {
+  const source = readFileSync('.github/workflows/release.yml', 'utf8');
+  expect(source).toContain('macos-latest');
+  expect(source).toContain('windows-latest');
+  expect(source).toContain('ubuntu-22.04');
+  expect(source).toContain('SHA256SUMS');
+  expect(source).toContain('latest.json');
 });
 
 test('@claim:linux-installer verifies, installs, and makes the AppImage executable', async () => {

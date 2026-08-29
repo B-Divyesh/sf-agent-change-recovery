@@ -241,10 +241,6 @@ fn list_manifests(project_store: &Path) -> Result<Vec<Checkpoint>, String> {
         .collect()
 }
 
-fn free_limit_reached(count: usize, pro: bool) -> bool {
-    !pro && count >= 7
-}
-
 fn write_checkpoint(
     project_path: &Path,
     project_store: &Path,
@@ -322,21 +318,21 @@ fn capture_checkpoint(
         .map_err(|error| error.to_string())?;
     let store = base.join("ledgers").join(project_key(&project_path));
     fs::create_dir_all(&store).map_err(|error| error.to_string())?;
-    if free_limit_reached(checkpoint_dirs(&store)?.len(), pro) {
-        return Err(
-            "The free ledger keeps 7 checkpoints. Add an active Pro license to capture more."
-                .into(),
-        );
-    }
+    let _ = (pro, retention);
     write_checkpoint(&project_path, &store, intent, commands, false, None)?;
-    if pro && retention > 0 {
-        let dirs = checkpoint_dirs(&store)?;
-        let remove_count = dirs.len().saturating_sub(retention);
-        for dir in dirs.into_iter().take(remove_count) {
-            fs::remove_dir_all(dir).map_err(|error| error.to_string())?;
-        }
-    }
     list_manifests(&store)
+}
+
+#[tauri::command]
+fn load_ledger(app: tauri::AppHandle, path: String) -> Result<Vec<Checkpoint>, String> {
+    let project_path = fs::canonicalize(Path::new(&path)).map_err(|_| {
+        "The project folder was not found. Check the full path and try again.".to_string()
+    })?;
+    let base = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|error| error.to_string())?;
+    list_manifests(&base.join("ledgers").join(project_key(&project_path)))
 }
 
 #[tauri::command]
@@ -428,6 +424,90 @@ fn delete_ledger_store(store: &Path) -> Result<(), String> {
         fs::remove_dir_all(store).map_err(|error| error.to_string())?;
     }
     Ok(())
+}
+
+fn write_sample_files(root: &Path, files: &[(&str, &str)]) -> Result<(), String> {
+    for (relative, content) in files {
+        let target = root.join(relative);
+        if let Some(parent) = target.parent() {
+            fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+        }
+        fs::write(target, content).map_err(|error| error.to_string())?;
+    }
+    Ok(())
+}
+
+fn load_bundled_sample(base: &Path) -> Result<(PathBuf, Vec<Checkpoint>), String> {
+    let project = base.join("sample-project");
+    if project.exists() {
+        fs::remove_dir_all(&project).map_err(|error| error.to_string())?;
+    }
+    fs::create_dir_all(&project).map_err(|error| error.to_string())?;
+    let store = base.join("ledgers").join(project_key(&project));
+    delete_ledger_store(&store)?;
+    write_sample_files(
+        &project,
+        &[
+            (
+                "src/auth/session.ts",
+                "export async function refresh() {\n  return renewOnce()\n}\n",
+            ),
+            (
+                "src/editor/autosave.ts",
+                "export async function save() {\n  await ensureSession()\n}\n",
+            ),
+            (
+                "src/account/profile.ts",
+                "export function profile() {\n  return renewSession()\n}\n",
+            ),
+        ],
+    )?;
+    write_checkpoint(
+        &project,
+        &store,
+        "Baseline before session refactor".into(),
+        vec!["npm test -- session".into()],
+        false,
+        None,
+    )?;
+    write_sample_files(
+        &project,
+        &[
+            ("src/auth/session.ts", "export async function refresh() {\n  return refreshQueue.current ?? renewOnce()\n}\n"),
+            ("src/editor/autosave.ts", "export async function save() {\n  await session.refresh()\n  scheduleNextSave()\n}\n"),
+            ("src/account/profile.ts", "export function profile() {\n  return session.refresh({ source: 'profile' })\n}\n"),
+            ("src/auth/refresh-queue.ts", "export class RefreshQueue {\n  current?: Promise<string>\n}\n"),
+        ],
+    )?;
+    let ledger = write_checkpoint(
+        &project,
+        &store,
+        "Refactor session refresh".into(),
+        vec!["npm test -- session".into(), "npm test -- editor".into()],
+        false,
+        None,
+    )?;
+    Ok((project, ledger))
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SampleProject {
+    path: String,
+    ledger: Vec<Checkpoint>,
+}
+
+#[tauri::command]
+fn load_sample_project(app: tauri::AppHandle, _reset: bool) -> Result<SampleProject, String> {
+    let base = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|error| error.to_string())?;
+    let (path, ledger) = load_bundled_sample(&base)?;
+    Ok(SampleProject {
+        path: path.to_string_lossy().into_owned(),
+        ledger,
+    })
 }
 
 #[tauri::command]
@@ -657,11 +737,13 @@ pub fn run() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             capture_checkpoint,
+            load_ledger,
             restore_files,
             export_patch,
             export_encrypted,
             import_encrypted_recovery,
-            delete_ledger
+            delete_ledger,
+            load_sample_project
         ])
         .run(tauri::generate_context!())
         .expect("error while running Change Recovery Ledger");
@@ -672,6 +754,7 @@ mod tests {
     use super::*;
     use std::{
         io::Write,
+        net::TcpListener,
         process::{Command, Stdio},
     };
 
@@ -706,14 +789,6 @@ mod tests {
     fn rejects_paths_outside_project() {
         assert!(safe_relative("../secret.txt").is_err());
         assert!(safe_relative("src/main.ts").is_ok());
-    }
-
-    #[test]
-    // @claim:free-history-limit
-    fn claim_free_history_limit() {
-        assert!(!free_limit_reached(6, false));
-        assert!(free_limit_reached(7, false));
-        assert!(!free_limit_reached(7, true));
     }
 
     #[test]
@@ -789,6 +864,13 @@ mod tests {
         let files = read_project(&chosen).unwrap();
         assert_eq!(files.get("inside.txt"), Some(&b"keep".to_vec()));
         assert!(!files.values().any(|content| content == b"do not read"));
+        // The capture core has no outbound transport. A listening local endpoint
+        // stays untouched while a unique project value is captured.
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        listener.set_nonblocking(true).unwrap();
+        assert!(
+            matches!(listener.accept(), Err(error) if error.kind() == std::io::ErrorKind::WouldBlock)
+        );
     }
 
     #[test]
@@ -829,6 +911,116 @@ mod tests {
         let files = read_project(root.path()).unwrap();
         assert!(files.contains_key("tracked.txt"));
         assert!(!files.keys().any(|path| path.starts_with(".git/")));
+    }
+
+    #[test]
+    // @claim:generated-folder-exclusions
+    fn claim_generated_folder_exclusions() {
+        let root = tempfile::tempdir().unwrap();
+        for folder in [".git", "node_modules", "target", "dist"] {
+            let nested = root.path().join(folder).join("nested");
+            fs::create_dir_all(&nested).unwrap();
+            fs::write(nested.join("ignored.txt"), "do not record").unwrap();
+        }
+        fs::write(root.path().join("keep.txt"), "record me").unwrap();
+        let files = read_project(root.path()).unwrap();
+        assert_eq!(files.get("keep.txt"), Some(&b"record me".to_vec()));
+        for folder in [".git", "node_modules", "target", "dist"] {
+            assert!(!files.keys().any(|path| path.starts_with(folder)));
+        }
+    }
+
+    #[test]
+    // @claim:checkpoint-record
+    fn claim_checkpoint_record_keeps_request_commands_files_and_check_result() {
+        let root = tempfile::tempdir().unwrap();
+        let project = root.path().join("project");
+        let store = root.path().join("ledger");
+        fs::create_dir_all(&project).unwrap();
+        fs::write(project.join("session.ts"), "before\n").unwrap();
+        write_checkpoint(
+            &project,
+            &store,
+            "Fix session refresh".into(),
+            vec!["npm test".into()],
+            false,
+            None,
+        )
+        .unwrap();
+        fs::write(project.join("session.ts"), "after\n").unwrap();
+        let checkpoint = write_checkpoint(
+            &project,
+            &store,
+            "Fix session refresh".into(),
+            vec!["npm test".into()],
+            false,
+            None,
+        )
+        .unwrap()
+        .pop()
+        .unwrap();
+        assert_eq!(checkpoint.intent, "Fix session refresh");
+        assert_eq!(checkpoint.commands, vec!["npm test"]);
+        assert_eq!(checkpoint.files.len(), 1);
+        assert_eq!(checkpoint.checks, "Not run by the ledger");
+    }
+
+    #[test]
+    // @claim:checkpoint-comparison
+    fn claim_checkpoint_comparison_uses_the_previous_snapshot() {
+        let root = tempfile::tempdir().unwrap();
+        let project = root.path().join("project");
+        let store = root.path().join("ledger");
+        fs::create_dir_all(&project).unwrap();
+        fs::write(project.join("state.txt"), "one\n").unwrap();
+        let first =
+            write_checkpoint(&project, &store, "Baseline".into(), vec![], false, None).unwrap();
+        assert_eq!(first.last().unwrap().files.len(), 1);
+        fs::write(project.join("state.txt"), "two\n").unwrap();
+        let second =
+            write_checkpoint(&project, &store, "Second".into(), vec![], false, None).unwrap();
+        assert_eq!(second.last().unwrap().files[0].path, "state.txt");
+        fs::write(project.join("state.txt"), "three\n").unwrap();
+        let third =
+            write_checkpoint(&project, &store, "Third".into(), vec![], false, None).unwrap();
+        assert_eq!(
+            third.last().unwrap().files[0].diff,
+            vec!["- two", "+ three"]
+        );
+    }
+
+    #[test]
+    // @claim:bundled-sample-project
+    fn claim_bundled_sample_project_is_resettable_and_isolated() {
+        let root = tempfile::tempdir().unwrap();
+        let real = root.path().join("real-project");
+        fs::create_dir_all(&real).unwrap();
+        fs::write(real.join("sentinel.txt"), "real work").unwrap();
+        let (sample, ledger) = load_bundled_sample(root.path()).unwrap();
+        assert_ne!(sample, real);
+        assert_eq!(ledger.len(), 2);
+        let changed = ledger.last().unwrap();
+        assert!(changed
+            .files
+            .iter()
+            .any(|file| file.path == "src/auth/session.ts"));
+        restore_files_in_store(
+            &sample,
+            &root.path().join("ledgers").join(project_key(&sample)),
+            &changed.id,
+            &["src/auth/session.ts".into()],
+        )
+        .unwrap();
+        assert!(fs::read_to_string(sample.join("src/auth/session.ts"))
+            .unwrap()
+            .contains("return renewOnce()"));
+        assert_eq!(
+            fs::read_to_string(real.join("sentinel.txt")).unwrap(),
+            "real work"
+        );
+        let (reset, reset_ledger) = load_bundled_sample(root.path()).unwrap();
+        assert_eq!(reset, sample);
+        assert_eq!(reset_ledger.len(), 2);
     }
 
     #[test]

@@ -2,25 +2,27 @@
 
 Reverse selected agent changes without losing unrelated work.
 
-Change Recovery Ledger is a local desktop sidecar for developers supervising long agent sessions. It records project snapshots with the agent’s intent and command trail. You can inspect a file group, create a safety checkpoint, restore selected files, or export selected changes as a patch. Git metadata is excluded from checkpoints, and exported patches never run themselves.
+Change Recovery Ledger is a local desktop app for developers supervising long agent sessions.
+It records the request, commands, files, and check result for each checkpoint.
+Reverse selected files after a safety checkpoint, or export a patch for review.
+Patches never run themselves.
 
-The public site is at [agent-change-recovery.sociobot.in](https://agent-change-recovery.sociobot.in). Open [`/demo`](https://agent-change-recovery.sociobot.in/demo) to try the full recovery path with isolated sample data.
+Use the one-click sample at [agent-change-recovery.sociobot.in/?demo=1](https://agent-change-recovery.sociobot.in/?demo=1).
+It uses separate browser storage and removes sample changes when you leave.
 
-## What ships
+## What it does
 
-- Tauri 2 desktop app for macOS, Windows, and Linux.
-- Rust snapshot core with generated-folder exclusions and path traversal checks.
-- Local checkpoint manifests and file snapshots in the operating system’s app-data folder.
-- Selective restore that creates a safety checkpoint first.
-- A safety checkpoint that can restore a mistaken reversal of its selected files.
-- Selected-file patch export that never executes the patch.
-- Passphrase-encrypted recovery export and import back into a reviewable patch.
-- A confirmed local-ledger deletion control that leaves project files unchanged.
-- Offline browser demo under a separate `demo:` storage key.
-- Sociobot license purchase, restore, and daily verification flow.
-- Static product site, legal pages, offline shell, and platform-aware release link.
+- Records only the project folder you choose.
+- Skips `.git`, `node_modules`, `target`, and `dist` folders.
+- Skips files over 2 MB.
+- Compares each checkpoint with the previous checkpoint.
+- Creates a safety checkpoint before a selected-file reversal.
+- Exports a standard unified patch without applying it.
+- Loads a bundled sample project in the desktop app.
+- Deletes local checkpoint snapshots without changing project files.
 
-The first seven checkpoints are included. Pro costs $15 per developer each month. It adds longer history, configurable retention, and passphrase-encrypted recovery export. Safety checkpoints and patch export are included in the free controls.
+The app is not Git and is not a backup service.
+Keep normal version control and backups.
 
 ## Run the site and demo
 
@@ -31,57 +33,59 @@ npm ci
 npm run dev
 ```
 
-Open `http://localhost:4173/demo` for the verifier sandbox. Demo changes use only `demo:agent-change-recovery:ledger`. Choose **Reset demo** for a clean state.
+Open `http://localhost:4173/?demo=1` to use the local sample.
+Choose **Reset demo** for a clean browser sample.
 
 ## Run the desktop app
 
-Install the [Tauri 2 system prerequisites](https://v2.tauri.app/start/prerequisites/) for your operating system, then run:
+Install the [Tauri 2 system prerequisites](https://v2.tauri.app/start/prerequisites/) for your operating system.
 
 ```sh
 npm ci
 npm run tauri dev
 ```
 
-The desktop app accepts an explicit project path. It ignores `.git`, `node_modules`, `target`, and `dist`. Files over 2 MB are skipped. The first capture establishes the baseline; later captures show changes from the previous snapshot.
-
-Choose **Delete local ledger** after loading a project to remove its local snapshots. The confirmation names the checkpoint count, and it does not change files in the project folder.
-
-With Pro, choose **Open encrypted recovery**, enter the `.crl` file path and its passphrase, and the app writes the decrypted patch for review. It never runs the patch.
+Choose **Load sample project** to try a disposable bundled project.
+Choose **Reset sample project** to recreate it.
+The desktop app never needs access to a real folder for that sample.
 
 ## Install a release
 
-The landing page picks the current release for your platform. On Linux, this command verifies the AppImage checksum, installs an executable at `~/.local/bin/change-recovery-ledger`, and tells you if that directory is not on `PATH`:
+The landing page selects the current release for your operating system.
+It links directly to a published macOS, Windows, or Linux file when available.
 
 ```sh
 curl -fsSL https://agent-change-recovery.sociobot.in/install.sh | sh
 ```
 
-On Windows, this command verifies the release checksum and starts the verified installer:
-
 ```powershell
 irm https://agent-change-recovery.sociobot.in/install.ps1 | iex
 ```
 
-macOS downloads are unsigned disk images. Open the downloaded image and move the app to Applications; macOS may ask you to confirm before opening it.
+The Linux and Windows scripts verify the published SHA-256 checksum first.
+macOS builds are unsigned during this release phase.
+Open the disk image, then move the app to Applications.
+For an unsigned build, Control-click the app and choose **Open**.
 
 ## Test and build
 
 ```sh
 npm test
 cargo test --manifest-path src-tauri/Cargo.toml
-npm run build:site
+npm run build
 ```
 
-`npm test` starts the built site and runs the Playwright claim, accessibility, mobile, and routing suite. The exact static deploy output is `dist/site`, with `index.html` at that root.
+`npm test` runs browser claims, routing, accessibility, mobile, privacy, and installer checks.
+`npm run build` writes the static deployment output to `dist/site`.
 
-Desktop packages are built only in GitHub Actions. Tag a release such as `v0.1.2`; `.github/workflows/release.yml` builds macOS arm64 and x64, Windows x64, Linux AppImage and deb targets, then publishes `SHA256SUMS` and `latest.json`.
+The release workflow builds desktop packages on macOS, Windows, and Linux runners.
+Tag `v0.1.3` or later to start that workflow.
+It publishes checksums and a release manifest with the desktop files.
 
-## Privacy and security
+## Privacy
 
-Project contents are not sent by the desktop core. License verification sends only the pasted license token to `api.sociobot.in`. The landing page checks GitHub’s public API for current release filenames and the Sociobot product catalog to show checkout only when it is published.
-
-Checkpoint data can contain secrets. Use the in-app **Delete local ledger** control when snapshots are no longer needed. Keep normal Git history and backups; this product is a recovery sidecar, not a backup service.
-
+Project contents stay in the desktop app.
+The browser landing page asks GitHub for current public release filenames.
 See the in-product [privacy policy](https://agent-change-recovery.sociobot.in/privacy) and [terms](https://agent-change-recovery.sociobot.in/terms).
 
 ## License
