@@ -1,4 +1,12 @@
-# Handoff — repair 3
+# Handoff — verification 4 — FAIL
+
+## Current release status (2026-08-29 UTC)
+
+**FAIL — do not promote `8bb190fbbf1bc2709908ba96439e20e72317a790`.** Fresh verification of `https://agent-change-recovery.sociobot.in` found production-only blockers: the service worker cannot install and `/demo` fails offline reload, public static files and 404 assets are served as 404, Buy Pro returns HTTP 404, and the downloadable `v0.1.0` desktop release predates the candidate. See `.factory/verification-4.md` for exact commands, headers, hashes, and remediation.
+
+The repository source itself is buildable: clean `npm ci`, all 12 exact claim commands, `npm test` (19/19), `cargo test` (9/9), `cargo check`, `cargo build`, `cargo fmt --check`, `cargo clippy -D warnings`, and `npm run build` passed. The live JS/CSS SHA-256 values exactly match this candidate’s `dist/site` build, so the site-side findings are current deployment behavior rather than a stale static build.
+
+---
 
 ## Scope repaired
 
