@@ -1,0 +1,15 @@
+import { chromium } from 'playwright';
+const browser = await chromium.launch({ headless: true });
+const page = await browser.newPage();
+const errors = [];
+page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+await page.goto('https://agent-change-recovery.sociobot.in/', { waitUntil: 'networkidle' });
+await page.getByRole('button', { name: 'Verify license' }).click();
+const blank = await page.locator('#license-status').textContent();
+await page.locator('#license').fill('qa-verification-6-invalid-token');
+await page.getByRole('button', { name: 'Verify license' }).click();
+await page.locator('#license-status').waitFor({ state: 'visible' });
+await page.waitForFunction(() => document.querySelector('#license-status')?.textContent?.includes('no longer active'));
+const invalid = await page.locator('#license-status').textContent();
+console.log(JSON.stringify({ blank, invalid, errors }, null, 2));
+await browser.close();

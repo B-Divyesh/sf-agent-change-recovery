@@ -1,0 +1,15 @@
+{
+  "beforeOffline": {
+    "controller": true,
+    "active": "activated",
+    "script": "https://agent-change-recovery.sociobot.in/sw.js",
+    "keys": [
+      "recovery-ledger-v4"
+    ]
+  },
+  "offline": {
+    "heading": "Inspect the failed session change",
+    "notice": "You are offline. Saved ledgers and the demo still work."
+  },
+  "errors": []
+}

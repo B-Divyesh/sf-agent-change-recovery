@@ -1,0 +1,16 @@
+{
+  "urls": [
+    "https://agent-change-recovery.sociobot.in/demo",
+    "https://agent-change-recovery.sociobot.in/assets/hero-ledger-800.webp",
+    "https://agent-change-recovery.sociobot.in/assets/index-D95gphMx.js",
+    "https://agent-change-recovery.sociobot.in/assets/index-DWKUmUR-.css"
+  ],
+  "origins": [
+    "https://agent-change-recovery.sociobot.in"
+  ],
+  "keysBeforeReset": [
+    "demo:agent-change-recovery:ledger"
+  ],
+  "keysAfterReset": [],
+  "errors": []
+}

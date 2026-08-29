@@ -1,0 +1,29 @@
+{
+  "skip": {
+    "active": "Skip to main content",
+    "outline": "rgb(255, 249, 233) solid 0px",
+    "offset": "0px",
+    "width": 390,
+    "clientWidth": 390,
+    "reducedDuration": "1e-05s"
+  },
+  "focusedMain": "main",
+  "menuState": "true",
+  "focusStyle": {
+    "outline": "rgb(255, 249, 233) none 0px",
+    "boxShadow": "rgb(23, 23, 19) 5px 5px 0px 0px",
+    "color": "rgb(255, 249, 233)"
+  },
+  "initialFocus": "Keep files",
+  "wrappedFocus": "Create checkpoint and reverse",
+  "restoredFocus": "Reverse 1 selected file",
+  "demoWidth": {
+    "width": 390,
+    "clientWidth": 390
+  },
+  "axe": {
+    "landing": [],
+    "demo": []
+  },
+  "errors": []
+}

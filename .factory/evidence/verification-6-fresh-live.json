@@ -1,0 +1,140 @@
+{
+  "landing": {
+    "status": 200,
+    "headers": {
+      "cache-control": "public, must-revalidate, max-age=30",
+      "content-encoding": "br",
+      "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://api.github.com https://api.sociobot.in; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self' https://api.sociobot.in; frame-ancestors 'none'",
+      "content-type": "text/html",
+      "date": "Sat, 29 Aug 2026 14:06:30 GMT",
+      "etag": "\"58534625\"",
+      "last-modified": "Sat, 29 Aug 2026 13:11:36 GMT",
+      "permissions-policy": "camera=(), microphone=(), geolocation=()",
+      "referrer-policy": "strict-origin-when-cross-origin",
+      "strict-transport-security": "max-age=10886400; includeSubDomains; preload",
+      "vary": "Accept-Encoding",
+      "x-content-type-options": "nosniff",
+      "x-dns-prefetch-control": "off",
+      "x-xss-protection": "1; mode=block"
+    },
+    "firstRead": {
+      "title": "Change Recovery Ledger — Reverse agent changes",
+      "h1": "Reverse the wrong agent changes",
+      "visible": [
+        "Skip to main content",
+        "You are offline. Saved ledgers and the demo still work.\n    \n      Change Recovery Ledger\n      Menu\n      \n        Demo\n        Open ledger\n        How it works\n        Privacy\n      \n    \n    \n      \n        Reverse the wrong agent changes\n        For developers supervising long agent sessions who need to recover one change without discarding the rest.\n        Try it with sample dataA loaded ledger opens next. Nothing is saved to your data.\n        Project files stay on this device.The demo works offline after one visit.Free for 7 checkpoints. Pro costs $15 per developer each month.\n      \n      SELECT ONE STRIP / KEEP THE REST\n    \n    The ledger, loadedInspect an agent turn before reversing itEach checkpoint keeps the intent, command trail, file group, and check result together.\n    \n      ACME-WEB / 4 CHECKPOINTSLOCAL\n      \n        \n          Keep draft after sign-in2 files · 11:08\n          Refactor session refresh4 files · 11:31\n          Update account help text1 file · 11:44\n        \n        \n          src/auth/session.ts2 tests failed\n          \n            - const token = await renewOnce()\n            + const token = refreshQueue.current\n            +   ?? renewOnce()\n            - refreshQueue.current = null\n            + return token.value\n          \n          Selected recovery: reverse this file and keep the other three.\n          Try this recovery\n        \n      \n    \n    How it worksRecover in three deliberate stepsCapture the turnWrite the agent’s intent and commands. The desktop app records the project files.Inspect the file groupCompare the checkpoint with the current folder. Select only the files that went wrong.Reverse or exportCreate a safety checkpoint, restore selected files, or export a patch for review. Patches never run themselves.\n    Desktop walkthroughSee one file recover safely1 / Select the suspect file2 / Confirm the safety checkpoint3 / Keep the recovery record\n    A local sidecarIt does not replace GitThe ledger leaves Git data out of its checkpoints. It records the folder you choose.Checkpoint files can contain secrets. They stay in the desktop app’s local data folder. Delete a local ledger when you no longer need it. This keeps your project files unchanged.The demo uses a separate demo: browser storage key. Leaving the demo does not copy its data.\n    Pro recoveryKeep longer historiesPro adds longer history, configurable retention, and passphrase-encrypted recovery export that opens back into a patch.$15 / developer / monthHave a license?Paste license tokenVerify licensePro checkout is being enabledYour free ledger keeps working. Check back after checkout is published.Sociobot is the merchant of record.See terms and privacy.\n    Desktop appChoose the build for your computerRelease files are unsigned in v0.1. Your system may ask you to confirm before opening them.Download for Linuxv0.1.2 · Change.Recovery.Ledger_0.1.2_amd64.AppImage\n  \n    \n      Change Recovery LedgerReverse selected agent changes without losing the rest.Original generated artwork · v0.1.2 · build 2026.08.29\n      PrivacyTermsBuilt by Param Factory (external site)",
+        "Change Recovery Ledger\n      Menu\n      \n        Demo\n        Open ledger\n        How it works\n        Privacy",
+        "Change Recovery Ledger",
+        "Change Recovery Ledger",
+        "Demo\n        Open ledger\n        How it works\n        Privacy",
+        "Demo",
+        "Open ledger",
+        "How it works",
+        "Privacy",
+        "Reverse the wrong agent changes\n        For developers supervising long agent sessions who need to recover one change without discarding the rest.\n        Try it with sample dataA loaded ledger opens next. Nothing is saved to your data.\n        Project files stay on this device.The demo works offline after one visit.Free for 7 checkpoints. Pro costs $15 per developer each month.\n      \n      SELECT ONE STRIP / KEEP THE REST\n    \n    The ledger, loadedInspect an agent turn before reversing itEach checkpoint keeps the intent, command trail, file group, and check result together.\n    \n      ACME-WEB / 4 CHECKPOINTSLOCAL\n      \n        \n          Keep draft after sign-in2 files · 11:08\n          Refactor session refresh4 files · 11:31\n          Update account help text1 file · 11:44\n        \n        \n          src/auth/session.ts2 tests failed\n          \n            - const token = await renewOnce()\n            + const token = refreshQueue.current\n            +   ?? renewOnce()\n            - refreshQueue.current = null\n            + return token.value\n          \n          Selected recovery: reverse this file and keep the other three.\n          Try this recovery\n        \n      \n    \n    How it worksRecover in three deliberate stepsCapture the turnWrite the agent’s intent and commands. The desktop app records the project files.Inspect the file groupCompare the checkpoint with the current folder. Select only the files that went wrong.Reverse or exportCreate a safety checkpoint, restore selected files, or export a patch for review. Patches never run themselves.\n    Desktop walkthroughSee one file recover safely1 / Select the suspect file2 / Confirm the safety checkpoint3 / Keep the recovery record\n    A local sidecarIt does not replace GitThe ledger leaves Git data out of its checkpoints. It records the folder you choose.Checkpoint files can contain secrets. They stay in the desktop app’s local data folder. Delete a local ledger when you no longer need it. This keeps your project files unchanged.The demo uses a separate demo: browser storage key. Leaving the demo does not copy its data.\n    Pro recoveryKeep longer historiesPro adds longer history, configurable retention, and passphrase-encrypted recovery export that opens back into a patch.$15 / developer / monthHave a license?Paste license tokenVerify licensePro checkout is being enabledYour free ledger keeps working. Check back after checkout is published.Sociobot is the merchant of record.See terms and privacy.\n    Desktop appChoose the build for your computerRelease files are unsigned in v0.1. Your system may ask you to confirm before opening them.Download for Linuxv0.1.2 · Change.Recovery.Ledger_0.1.2_amd64.AppImage",
+        "Reverse the wrong agent changes\n        For developers supervising long agent sessions who need to recover one change without discarding the rest.\n        Try it with sample dataA loaded ledger opens next. Nothing is saved to your data.\n        Project files stay on this device.The demo works offline after one visit.Free for 7 checkpoints. Pro costs $15 per developer each month.\n      \n      SELECT ONE STRIP / KEEP THE REST",
+        "Reverse the wrong agent changes\n        For developers supervising long agent sessions who need to recover one change without discarding the rest.\n        Try it with sample dataA loaded ledger opens next. Nothing is saved to your data.\n        Project files stay on this device.The demo works offline after one visit.Free for 7 checkpoints. Pro costs $15 per developer each month.",
+        "Reverse the wrong agent changes",
+        "For developers supervising long agent sessions who need to recover one change without discarding the rest.",
+        "Try it with sample dataA loaded ledger opens next. Nothing is saved to your data.",
+        "Try it with sample data",
+        "A loaded ledger opens next. Nothing is saved to your data.",
+        "Project files stay on this device.The demo works offline after one visit.Free for 7 checkpoints. Pro costs $15 per developer each month.",
+        "Project files stay on this device.",
+        "The demo works offline after one visit.",
+        "Free for 7 checkpoints. Pro costs $15 per developer each month.",
+        "SELECT ONE STRIP / KEEP THE REST",
+        "SELECT ONE STRIP / KEEP THE REST",
+        "The ledger, loadedInspect an agent turn before reversing itEach checkpoint keeps the intent, command trail, file group, and check result together.\n    \n      ACME-WEB / 4 CHECKPOINTSLOCAL\n      \n        \n          Keep draft after sign-in2 files · 11:08\n          Refactor session refresh4 files · 11:31\n          Update account help text1 file · 11:44\n        \n        \n          src/auth/session.ts2 tests failed\n          \n            - const token = await renewOnce()\n            + const token = refreshQueue.current\n            +   ?? renewOnce()\n            - refreshQueue.current = null\n            + return token.value\n          \n          Selected recovery: reverse this file and keep the other three.\n          Try this recovery",
+        "The ledger, loadedInspect an agent turn before reversing itEach checkpoint keeps the intent, command trail, file group, and check result together.\n    \n      ACME-WEB / 4 CHECKPOINTSLOCAL\n      \n        \n          Keep draft after sign-in2 files · 11:08\n          Refactor session refresh4 files · 11:31\n          Update account help text1 file · 11:44\n        \n        \n          src/auth/session.ts2 tests failed\n          \n            - const token = await renewOnce()\n            + const token = refreshQueue.current\n            +   ?? renewOnce()\n            - refreshQueue.current = null\n            + return token.value\n          \n          Selected recovery: reverse this file and keep the other three.\n          Try this recovery",
+        "The ledger, loadedInspect an agent turn before reversing itEach checkpoint keeps the intent, command trail, file group, and check result together.",
+        "The ledger, loaded",
+        "Inspect an agent turn before reversing it",
+        "Each checkpoint keeps the intent, command trail, file group, and check result together.",
+        "ACME-WEB / 4 CHECKPOINTSLOCAL\n      \n        \n          Keep draft after sign-in2 files · 11:08\n          Refactor session refresh4 files · 11:31\n          Update account help text1 file · 11:44\n        \n        \n          src/auth/session.ts2 tests failed\n          \n            - const token = await renewOnce()\n            + const token = refreshQueue.current\n            +   ?? renewOnce()\n            - refreshQueue.current = null\n            + return token.value\n          \n          Selected recovery: reverse this file and keep the other three.\n          Try this recovery",
+        "ACME-WEB / 4 CHECKPOINTSLOCAL",
+        "ACME-WEB / 4 CHECKPOINTS",
+        "LOCAL",
+        "Keep draft after sign-in2 files · 11:08\n          Refactor session refresh4 files · 11:31\n          Update account help text1 file · 11:44\n        \n        \n          src/auth/session.ts2 tests failed\n          \n            - const token = await renewOnce()\n            + const token = refreshQueue.current\n            +   ?? renewOnce()\n            - refreshQueue.current = null\n            + return token.value\n          \n          Selected recovery: reverse this file and keep the other three.\n          Try this recovery",
+        "Keep draft after sign-in2 files · 11:08\n          Refactor session refresh4 files · 11:31\n          Update account help text1 file · 11:44",
+        "Keep draft after sign-in2 files · 11:08",
+        "Keep draft after sign-in",
+        "2 files · 11:08",
+        "Refactor session refresh4 files · 11:31",
+        "Refactor session refresh",
+        "4 files · 11:31",
+        "Update account help text1 file · 11:44",
+        "Update account help text",
+        "1 file · 11:44",
+        "src/auth/session.ts2 tests failed\n          \n            - const token = await renewOnce()\n            + const token = refreshQueue.current\n            +   ?? renewOnce()\n            - refreshQueue.current = null\n            + return token.value\n          \n          Selected recovery: reverse this file and keep the other three.\n          Try this recovery",
+        "src/auth/session.ts2 tests failed",
+        "src/auth/session.ts",
+        "2 tests failed",
+        "- const token = await renewOnce()\n            + const token = refreshQueue.current\n            +   ?? renewOnce()\n            - refreshQueue.current = null\n            + return token.value"
+      ],
+      "h1Count": 1,
+      "mainCount": 1,
+      "lang": "en",
+      "demoButton": "<a class=\"button\" href=\"/demo\" data-route=\"\">Try it with sample data</a>"
+    },
+    "axe": []
+  },
+  "demo": {
+    "heading": "Inspect the failed session change",
+    "initialSelected": 1,
+    "dialogText": "Reverse 1 selected file?The ledger creates a safety checkpoint first. Other files in this agent turn stay unchanged.Keep filesCreate checkpoint and reverse",
+    "recoveryToast": "1 file was reversed. The safety checkpoint is in the ledger.",
+    "download": "recovery-cp-3.patch",
+    "patchBytes": 206,
+    "axe": []
+  },
+  "requests": [
+    {
+      "method": "GET",
+      "url": "https://agent-change-recovery.sociobot.in/",
+      "type": "document"
+    },
+    {
+      "method": "GET",
+      "url": "https://agent-change-recovery.sociobot.in/assets/hero-ledger-800.webp",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://agent-change-recovery.sociobot.in/assets/index-D95gphMx.js",
+      "type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "https://agent-change-recovery.sociobot.in/assets/index-DWKUmUR-.css",
+      "type": "stylesheet"
+    },
+    {
+      "method": "GET",
+      "url": "https://api.github.com/repos/B-Divyesh/sf-agent-change-recovery/releases/latest",
+      "type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "https://api.sociobot.in/api/v1/products",
+      "type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "https://agent-change-recovery.sociobot.in/assets/walkthrough-1.webp",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://agent-change-recovery.sociobot.in/assets/walkthrough-2.webp",
+      "type": "image"
+    },
+    {
+      "method": "GET",
+      "url": "https://agent-change-recovery.sociobot.in/assets/walkthrough-3.webp",
+      "type": "image"
+    }
+  ],
+  "failures": [],
+  "consoleErrors": []
+}
