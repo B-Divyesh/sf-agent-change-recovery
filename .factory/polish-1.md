@@ -1,6 +1,6 @@
 # Polish 1 — review finding closure
 
-Candidate repaired from `e473cfab3471e222a1131fa28fabe736ed823a66`. Local evidence is recorded below; live checks are appended after deployment.
+Candidate repaired from `e473cfab3471e222a1131fa28fabe736ed823a66`. Local and cold-production evidence is recorded below.
 
 | Finding | Change made | Evidence |
 | --- | --- | --- |
@@ -61,4 +61,9 @@ Candidate repaired from `e473cfab3471e222a1131fa28fabe736ed823a66`. Local eviden
 - Local 390px landing: `.factory/evidence/polish-1-landing-mobile.png`.
 - Local 390px demo: `.factory/evidence/polish-1-demo-mobile.png`.
 - Release: `https://github.com/B-Divyesh/sf-agent-change-recovery/releases/tag/v0.1.4`.
-- Live static re-check: pending host refresh after the pushed `main` deployment.
+- Cold live static re-check (2026-08-29): `scripts/verify-url.sh` passed for `/`, `/?demo=1`, `/privacy`, and `/terms`; all static public files return 200 and `/missing-sheet` returns 404.
+- Cold demo re-check: demo banner and reset controls appear at `/?demo=1`; **Start for real** removes all `demo:` keys and opens `/app`. A fresh live browser made requests only to the product origin and `api.github.com`.
+- Cold offline re-check: after the first live demo visit and service-worker activation, an offline reload retained the demo banner and title.
+- Live accessibility: Playwright Axe found 0 serious or critical violations on `/`, `/?demo=1`, `/privacy`, `/terms`, and `/missing-sheet` at 390 px.
+- Live 390px landing: `.factory/evidence/polish-1-live-landing-mobile.png`.
+- Live 390px demo: `.factory/evidence/polish-1-live-demo-mobile.png`.

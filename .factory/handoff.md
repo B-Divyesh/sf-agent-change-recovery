@@ -18,7 +18,7 @@
 - Pushed `main` and release tags `v0.1.3`, `v0.1.4` to `origin`.
 - GitHub quality run `33261873620`: **success**.
 - GitHub desktop release run `33261874466`: **success**. Release `v0.1.4` contains macOS arm64/x64, Windows MSI/EXE, and Linux AppImage/DEB/RPM assets plus `SHA256SUMS` and `latest.json`.
-- Static deployment: main has been pushed; live validation is appended after the host updates.
+- Static deployment: deployed the freshly built `dist/site` to the configured Azure Static Web App `sf-agent-change-recovery` production environment. Live asset timestamp: 2026-08-29 16:16:43 UTC.
 
 ## Verification
 
@@ -31,6 +31,10 @@
 - `scripts/verify-url.sh` passed for local production `/`, `/?demo=1`, `/privacy`, and `/terms` with title, language, main, H1, alt, and console checks.
 - Playwright Axe scans are part of `npm test`; no serious or critical violations.
 - Local evidence screenshots: `.factory/evidence/polish-1-landing-mobile.png` and `.factory/evidence/polish-1-demo-mobile.png`.
+- Cold live checks passed on `https://agent-change-recovery.sociobot.in/`: `scripts/verify-url.sh` for `/`, `/?demo=1`, `/privacy`, and `/terms`; static files (`favicon`, Apple icon, robots, sitemap, 404 CSS/JS) all returned 200; `/missing-sheet` returned 404.
+- Live demo controls appeared and exit removed all `demo:` storage keys before `/app`. Its observed network origins were only the product origin and `api.github.com`. A first-visit live demo also reloaded offline through the service worker.
+- Live Playwright Axe scans at 390px found 0 serious or critical violations on `/`, `/?demo=1`, `/privacy`, `/terms`, and `/missing-sheet`.
+- Live evidence screenshots: `.factory/evidence/polish-1-live-landing-mobile.png` and `.factory/evidence/polish-1-live-demo-mobile.png`.
 
 ## Packaging note
 
