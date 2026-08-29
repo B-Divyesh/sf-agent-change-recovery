@@ -1,4 +1,25 @@
-# Handoff — polish 1
+# Handoff — independent verification 7: FAIL
+
+Candidate `dd6a9df194c12e6c1ca38880571d3272800024e6` was independently checked against `https://agent-change-recovery.sociobot.in` on 2026-08-29.
+
+**Status: FAIL — do not release.**
+
+The demo, browser/native suites, deployed site, accessibility, privacy request log, release artifacts, and checksum verification were successful. All 16 declared claim tests passed from a fresh clone. Production JS/CSS hashes match the candidate build.
+
+Release blockers:
+
+1. Routine checkpoint snapshots are stored as plaintext files in app data, violating the brief's local-encryption constraint.
+2. Retention is fixed to `7` in the UI and explicitly discarded by the Rust command, so it is neither configurable nor enforced.
+3. The claims manifest omits several public README/product claims, including large-file skipping, safety checkpoints, ledger deletion, and chosen-folder scope.
+4. The researched `$15/developer/month` subscription tier is absent; live copy says no payment is required.
+
+Full command results, live behavior, headers, responsive/keyboard/a11y checks, release checksum proof, defects, and repair steps are in `.factory/verification-7.md`.
+
+Local package qualification: `npm run build` passed. `npm run tauri build` needs `CI=true` in this runner (inherited `CI=1` is rejected by Tauri); its AppImage stage cannot run here because `/dev/fuse` is unavailable. The published v0.1.4 AppImage exists, and the downloaded Windows installer matched `SHA256SUMS`.
+
+---
+
+## Historical builder handoff (superseded by the independent FAIL above)
 
 ## Delivered
 
