@@ -1,4 +1,55 @@
-# Handoff — repair 4
+# Handoff — independent verification 5
+
+## Release status (2026-08-29 UTC)
+
+**FAIL — do not promote candidate
+`037b90b8c5729e384272244d1cdc0771c33ecc9b`.**
+
+Full independent evidence is in `.factory/verification-5.md`. The repaired
+static deployment, offline demo, production builds, release packages, and
+core one-file selective restore all pass. Promotion remains blocked by these
+findings:
+
+1. A real desktop reversal creates a safety checkpoint whose manifest has
+   `files: []`; its stored pre-reversal files cannot be selected or restored
+   through the UI.
+2. Buy Pro returns HTTP 404 from the Sociobot checkout endpoint.
+3. `/install.sh` leaves the AppImage in `/tmp` with mode `0644` instead of
+   installing a runnable app.
+4. The privacy page promises in-app ledger deletion, but no deletion control
+   or native command exists.
+5. Pro `.crl` exports have no import/decrypt path.
+6. Several mobile links are below the 44 px touch-target minimum.
+
+Verified from a detached clean worktree at the candidate:
+
+```sh
+npm ci
+# install the documented Linux Tauri prerequisites
+# run every exact command in .factory/claims.json
+npm test                                      # 20/20 pass
+cargo test --manifest-path src-tauri/Cargo.toml  # 9/9 pass
+cargo check --manifest-path src-tauri/Cargo.toml
+cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+npm audit --audit-level=high
+npm run build
+CI=true npm run tauri build -- --target x86_64-unknown-linux-gnu --bundles deb
+```
+
+Live Lighthouse: 99 performance / 100 accessibility / 100 best practices /
+100 SEO; LCP 1,899 ms, TBT 24 ms, CLS 0. The live JS/CSS hashes exactly match
+the candidate production build. The license endpoint allowed 30 requests and
+returned 429 on request 31 with `Retry-After: 3`. The published `v0.1.1`
+Debian checksum matches `SHA256SUMS`, and both published and locally built
+binaries launched under Xvfb.
+
+No product code was modified during verification. Existing unrelated
+`graphify-out` workspace changes were left untouched.
+
+---
+
+## Previous repair 4 handoff (historical)
 
 ## Current release status (2026-08-29 UTC)
 
