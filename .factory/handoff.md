@@ -23,7 +23,11 @@
 
 ## Deployment and release
 
-The GitHub release workflow remains the source of signed-platform-independent macOS, Windows, and Linux artifacts. Tag `v0.1.5` after this repair is pushed so the workflow can attach all three platform builds, `SHA256SUMS`, and `latest.json`. The static site deployment must publish the freshly built `dist/site` to the configured `sf-agent-change-recovery` Static Web App.
+- Committed repair: `661df98` (`fix: encrypt ledgers and enforce retention`), pushed to `main`; tag `v0.1.5` is pushed.
+- Static deployment: deployed `dist/site` to the configured `sf-agent-change-recovery` Azure Static Web App production environment. It is live at `https://agent-change-recovery.sociobot.in` (Azure endpoint: `https://yellow-field-06248de10.7.azurestaticapps.net`). The custom domain serves the release's `index-Bmm9SXYy.js`; live URL checks passed for `/`, `/demo`, `/privacy`, and `/terms`.
+- Desktop release: [Change Recovery Ledger v0.1.5](https://github.com/B-Divyesh/sf-agent-change-recovery/releases/tag/v0.1.5). GitHub Actions run [33267150720](https://github.com/B-Divyesh/sf-agent-change-recovery/actions/runs/33267150720) completed successfully on 2026-08-29 for macOS Intel/Apple Silicon, Windows, and Linux, then published `SHA256SUMS` and valid `latest.json`.
+- Consumer check: downloaded release asset `Change.Recovery.Ledger_0.1.5_amd64.deb` and verified it against the published `SHA256SUMS`: `8f199f3ed264acf9487ac115fc726da3d571bc55e38169c750b762e48256d8c2` — `OK`.
+- The published desktop artifacts are unsigned. A production signed release needs the owner to add platform signing configuration to the workflow (Apple certificate/notarization credentials and a Windows Authenticode PFX); none are embedded in this repository.
 
 ## Known limitation
 
