@@ -48,7 +48,7 @@ test('query demo entry opens the isolated sample in one request', async ({ page 
   await expect(page.getByText('Demo — sample data, nothing is saved')).toBeVisible();
 });
 
-test('@claim:patch-export exports selected changes as a patch', async ({ page }) => {
+test('exports selected demo changes as a patch', async ({ page }) => {
   await page.goto('/demo');
   const downloadEvent = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export selected patch' }).click();
@@ -153,7 +153,7 @@ test('service worker installs the shipped shell, updates its cache, and keeps th
     const registration = await navigator.serviceWorker.getRegistration();
     await registration?.update();
     const keys = await caches.keys();
-    const cache = await caches.open('recovery-ledger-v5');
+    const cache = await caches.open('recovery-ledger-v6');
     return {
       active: registration?.active?.state,
       script: registration?.active?.scriptURL,
@@ -164,7 +164,7 @@ test('service worker installs the shipped shell, updates its cache, and keeps th
   });
   expect(installed.active).toBe('activated');
   expect(installed.script).toContain('/sw.js');
-  expect(installed.keys).toContain('recovery-ledger-v5');
+  expect(installed.keys).toContain('recovery-ledger-v6');
   expect(installed.cachedDemo).toBe(true);
   expect(installed.cachedShell).toBe(true);
   await context.setOffline(true);
@@ -249,6 +249,18 @@ test('mobile links and controls meet the 44px touch-target baseline', async ({ p
     expect(target.width, `${target.text} must be at least 44px wide`).toBeGreaterThanOrEqual(44);
     expect(target.height, `${target.text} must be at least 44px high`).toBeGreaterThanOrEqual(44);
   }
+});
+
+test('mobile selected-file diff summary meets the 44px touch-target baseline', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/demo');
+  const summary = page.locator('details.intent > summary');
+  const box = await summary.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.width).toBeGreaterThanOrEqual(44);
+  expect(box!.height).toBeGreaterThanOrEqual(44);
+  await summary.click();
+  await expect(page.locator('details.intent .diff')).toBeVisible();
 });
 
 test('reverse dialog traps focus and restores it to its trigger', async ({ page }) => {
@@ -345,6 +357,17 @@ test('@claim:release-platforms declares macOS, Windows, Linux, checksums, and ma
   expect(source).toContain('ubuntu-22.04');
   expect(source).toContain('SHA256SUMS');
   expect(source).toContain('latest.json');
+});
+
+test('Linux AppImage packaging installs its required tool and verifies the generated asset', () => {
+  const workflow = readFileSync('.github/workflows/release.yml', 'utf8');
+  const helper = readFileSync('scripts/prepare-linuxdeploy-plugin.mjs', 'utf8');
+  expect(workflow).toContain('file libwebkit2gtk-4.1-dev');
+  expect(workflow).toContain('Prepare the pinned Linuxdeploy GTK helper');
+  expect(workflow).toContain('Verify Linux installers');
+  expect(workflow).toContain('bundle/appimage/*.AppImage');
+  expect(helper).toContain('cb379f9b0733e9ad9f8bd78f8c2fa038aef2478523bb7d4c8e64ff6a1ea3501a');
+  expect(helper).toContain('ln $verbose -s -f');
 });
 
 test('@claim:linux-installer verifies, installs, and makes the AppImage executable', async () => {

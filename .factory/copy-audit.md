@@ -1,4 +1,4 @@
-# Copy audit — 2026-08-29 repair 6
+# Copy audit — 2026-08-29 repair 8
 
 ## Landing copy
 

@@ -1,11 +1,11 @@
 {
   "name": "agent-change-recovery",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "tauri": "tauri",
+    "tauri": "node scripts/prepare-linuxdeploy-plugin.mjs && tauri",
     "build": "npm run build:site",
     "build:site": "tsc --noEmit && vite build",
     "test": "playwright test",

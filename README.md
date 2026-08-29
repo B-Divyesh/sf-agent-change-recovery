@@ -6,7 +6,7 @@ Change Recovery Ledger is a local desktop app for developers supervising long ag
 It records the request, commands, files, and check result for each checkpoint.
 Reverse selected files after a safety checkpoint, or export a patch for review.
 Patches never run themselves.
-Every desktop ledger uses a passphrase to encrypt snapshots and manifests on disk.
+Every desktop ledger uses a passphrase to encrypt snapshots, manifests, and retention settings on disk.
 
 Use the one-click sample at [agent-change-recovery.sociobot.in/?demo=1](https://agent-change-recovery.sociobot.in/?demo=1).
 It uses separate browser storage and removes sample changes when you leave.
@@ -96,7 +96,7 @@ npm run build
 `npm run build` writes the static deployment output to `dist/site`.
 
 The release workflow builds desktop packages on macOS, Windows, and Linux runners.
-Tag `v0.1.5` or later to start that workflow.
+Tag `v0.1.6` or later to start that workflow.
 It publishes checksums and a release manifest with the desktop files.
 
 ## Privacy

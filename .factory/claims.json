@@ -9,9 +9,9 @@
   {
     "id": "patch-export",
     "claim": "Export selected changes as a patch without running it.",
-    "where": "landing page and demo toolbar",
-    "test": "npm test -- --grep @claim:patch-export",
-    "sandbox": "fresh browser demo; download selected patch; run patch --dry-run against matching fixture"
+    "where": "landing page, desktop ledger action, and README",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_patch_export_is_standard_unified_diff_and_dry_runs",
+    "sandbox": "native fixtures with newline-terminated and missing-final-newline text; export both selected files, assert markers, dry-run GNU patch, and reject a binary selection"
   },
   {
     "id": "demo-isolation",
@@ -56,6 +56,13 @@
     "sandbox": "native fixture; capture a unique secret; inspect every ledger file for its absence; reopen the encrypted snapshot with the passphrase"
   },
   {
+    "id": "retention-settings-encryption",
+    "claim": "Retention settings are encrypted in the local ledger.",
+    "where": "privacy policy and README",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_retention_settings_are_encrypted_in_the_local_ledger",
+    "sandbox": "native fixture; create a ledger with a retention setting, assert settings.enc has encrypted storage bytes and no retention field, then reopen the value with the passphrase"
+  },
+  {
     "id": "retention-policy",
     "claim": "You can choose how many recent checkpoints to keep, and old checkpoints are pruned without breaking boundary recovery.",
     "where": "desktop capture form and README",
@@ -88,7 +95,7 @@
     "claim": "Records only the project folder you choose.",
     "where": "README, landing page, privacy policy",
     "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_chosen_folder_only",
-    "sandbox": "native fixture; capture a chosen folder beside an outside sentinel and assert only chosen-folder files are read"
+    "sandbox": "native fixture; capture a chosen folder beside an outside sentinel, replace a selected parent with a symlink, attempt reversal, and assert the sentinel is unchanged"
   },
   {
     "id": "large-file-skip",

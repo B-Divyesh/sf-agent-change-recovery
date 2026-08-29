@@ -1,4 +1,4 @@
-const CACHE = 'recovery-ledger-v5';
+const CACHE = 'recovery-ledger-v6';
 // Every item is a required, shipped first-party URL. Keep this list independent
 // of optional browser chrome assets so one missing icon can never prevent the
 // demo shell from installing offline.

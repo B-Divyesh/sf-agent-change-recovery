@@ -9,8 +9,17 @@ use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeMap,
     fs,
+    io::Write,
     path::{Component, Path, PathBuf},
     time::{Duration, SystemTime, UNIX_EPOCH},
+};
+#[cfg(unix)]
+use std::{
+    ffi::CString,
+    os::unix::{
+        ffi::OsStrExt,
+        io::{AsRawFd, FromRawFd},
+    },
 };
 use tauri::Manager;
 use walkdir::{DirEntry, WalkDir};
@@ -688,6 +697,185 @@ fn safe_relative(path: &str) -> Result<&Path, String> {
     Ok(relative)
 }
 
+fn relative_components(path: &str) -> Result<Vec<&std::ffi::OsStr>, String> {
+    let relative = safe_relative(path)?;
+    let components: Vec<_> = relative
+        .components()
+        .filter_map(|component| match component {
+            Component::Normal(name) => Some(name),
+            _ => None,
+        })
+        .collect();
+    if components.is_empty() {
+        return Err("A selected file path is outside the project folder.".into());
+    }
+    Ok(components)
+}
+
+fn verify_restore_destination(project_path: &Path, relative: &str) -> Result<(), String> {
+    let mut current = fs::canonicalize(project_path).map_err(|_| {
+        "The project folder was not found. Check the full path and try again.".to_string()
+    })?;
+    let components = relative_components(relative)?;
+    for (index, component) in components.iter().enumerate() {
+        current.push(component);
+        match fs::symlink_metadata(&current) {
+            Ok(metadata) if metadata.file_type().is_symlink() => {
+                return Err(format!(
+                    "Could not reverse {relative}: its path contains a symlink. Choose a project folder without redirected paths."
+                ));
+            }
+            Ok(metadata) if index + 1 < components.len() && !metadata.is_dir() => {
+                return Err(format!(
+                    "Could not reverse {relative}: a parent path is not a folder."
+                ));
+            }
+            Ok(_) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => break,
+            Err(error) => return Err(format!("Could not inspect {relative}: {error}")),
+        }
+    }
+    Ok(())
+}
+
+#[cfg(unix)]
+fn c_string(component: &std::ffi::OsStr, relative: &str) -> Result<CString, String> {
+    CString::new(component.as_bytes()).map_err(|_| format!("Could not safely resolve {relative}."))
+}
+
+#[cfg(unix)]
+fn open_project_directory(project_path: &Path) -> Result<fs::File, String> {
+    let path = CString::new(project_path.as_os_str().as_bytes())
+        .map_err(|_| "Could not safely open the project folder.".to_string())?;
+    let fd = unsafe {
+        libc::open(
+            path.as_ptr(),
+            libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC | libc::O_NOFOLLOW,
+        )
+    };
+    if fd < 0 {
+        return Err(format!(
+            "Could not safely open the project folder: {}",
+            std::io::Error::last_os_error()
+        ));
+    }
+    Ok(unsafe { fs::File::from_raw_fd(fd) })
+}
+
+#[cfg(unix)]
+fn open_restore_parent(
+    project_path: &Path,
+    relative: &str,
+    create_missing: bool,
+) -> Result<Option<(fs::File, CString)>, String> {
+    let components = relative_components(relative)?;
+    let mut directory = open_project_directory(project_path)?;
+    for component in &components[..components.len() - 1] {
+        let name = c_string(component, relative)?;
+        let flags = libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC | libc::O_NOFOLLOW;
+        let mut fd = unsafe { libc::openat(directory.as_raw_fd(), name.as_ptr(), flags) };
+        if fd < 0 && std::io::Error::last_os_error().raw_os_error() == Some(libc::ENOENT) {
+            if !create_missing {
+                return Ok(None);
+            }
+            let created = unsafe { libc::mkdirat(directory.as_raw_fd(), name.as_ptr(), 0o755) };
+            if created != 0 && std::io::Error::last_os_error().raw_os_error() != Some(libc::EEXIST)
+            {
+                return Err(format!(
+                    "Could not create a folder for {relative}: {}",
+                    std::io::Error::last_os_error()
+                ));
+            }
+            fd = unsafe { libc::openat(directory.as_raw_fd(), name.as_ptr(), flags) };
+        }
+        if fd < 0 {
+            return Err(format!(
+                "Could not safely resolve {relative}: {}",
+                std::io::Error::last_os_error()
+            ));
+        }
+        directory = unsafe { fs::File::from_raw_fd(fd) };
+    }
+    Ok(Some((
+        directory,
+        c_string(components.last().expect("non-empty components"), relative)?,
+    )))
+}
+
+#[cfg(unix)]
+fn restore_selected_file(
+    project_path: &Path,
+    relative: &str,
+    content: Option<&Vec<u8>>,
+) -> Result<(), String> {
+    match content {
+        Some(content) => {
+            let (parent, name) = open_restore_parent(project_path, relative, true)?
+                .expect("creating a restore parent always returns a directory");
+            let fd = unsafe {
+                libc::openat(
+                    parent.as_raw_fd(),
+                    name.as_ptr(),
+                    libc::O_WRONLY
+                        | libc::O_CREAT
+                        | libc::O_TRUNC
+                        | libc::O_CLOEXEC
+                        | libc::O_NOFOLLOW,
+                    0o600,
+                )
+            };
+            if fd < 0 {
+                return Err(format!(
+                    "Could not restore {relative}: {}",
+                    std::io::Error::last_os_error()
+                ));
+            }
+            let mut target = unsafe { fs::File::from_raw_fd(fd) };
+            target
+                .write_all(content)
+                .map_err(|error| format!("Could not restore {relative}: {error}"))?;
+            target
+                .sync_all()
+                .map_err(|error| format!("Could not finish restoring {relative}: {error}"))
+        }
+        None => {
+            let Some((parent, name)) = open_restore_parent(project_path, relative, false)? else {
+                return Ok(());
+            };
+            let result = unsafe { libc::unlinkat(parent.as_raw_fd(), name.as_ptr(), 0) };
+            if result == 0 || std::io::Error::last_os_error().raw_os_error() == Some(libc::ENOENT) {
+                Ok(())
+            } else {
+                Err(format!(
+                    "Could not remove {relative}: {}",
+                    std::io::Error::last_os_error()
+                ))
+            }
+        }
+    }
+}
+
+#[cfg(not(unix))]
+fn restore_selected_file(
+    project_path: &Path,
+    relative: &str,
+    content: Option<&Vec<u8>>,
+) -> Result<(), String> {
+    verify_restore_destination(project_path, relative)?;
+    let target = project_path.join(safe_relative(relative)?);
+    if let Some(content) = content {
+        if let Some(parent) = target.parent() {
+            fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+        }
+        fs::write(&target, content)
+            .map_err(|error| format!("Could not restore {relative}: {error}"))
+    } else if target.exists() {
+        fs::remove_file(&target).map_err(|error| format!("Could not remove {relative}: {error}"))
+    } else {
+        Ok(())
+    }
+}
+
 #[tauri::command]
 fn capture_checkpoint(
     app: tauri::AppHandle,
@@ -804,6 +992,9 @@ fn restore_files_in_store(
     if index == 0 && load_baseline(store, crypto)?.is_none() {
         return Err("The first checkpoint has no earlier state to restore.".into());
     }
+    let project_path = fs::canonicalize(project_path).map_err(|_| {
+        "The project folder was not found. Check the full path and try again.".to_string()
+    })?;
     let source_manifest = read_manifest(&dirs[index], crypto)?;
     let mut safety_files = Vec::with_capacity(files.len());
     for relative in files {
@@ -830,11 +1021,16 @@ fn restore_files_in_store(
         previous_snapshot(store, &dirs, index, crypto)?
             .ok_or("The earlier checkpoint required for this reversal is no longer available.")?
     };
+    // Inspect every destination before recording the safety checkpoint. An
+    // unsafe project shape therefore leaves both the project and ledger alone.
+    for relative in files {
+        verify_restore_destination(&project_path, relative)?;
+    }
     // Resolve the earlier state before writing the safety checkpoint. A tight
     // retention policy may prune the source checkpoint during that write, but
     // must never change what the user asked to restore in this operation.
     write_checkpoint(
-        project_path,
+        &project_path,
         store,
         crypto,
         retention,
@@ -846,17 +1042,7 @@ fn restore_files_in_store(
         },
     )?;
     for relative in files {
-        let target = project_path.join(safe_relative(relative)?);
-        if let Some(content) = restore_from.get(relative) {
-            if let Some(parent) = target.parent() {
-                fs::create_dir_all(parent).map_err(|error| error.to_string())?;
-            }
-            fs::write(&target, content)
-                .map_err(|error| format!("Could not restore {relative}: {error}"))?;
-        } else if target.exists() {
-            fs::remove_file(&target)
-                .map_err(|error| format!("Could not remove {relative}: {error}"))?;
-        }
+        restore_selected_file(&project_path, relative, restore_from.get(relative))?;
     }
     list_manifests(store, crypto)
 }
@@ -1010,7 +1196,7 @@ fn export_patch(
         .ok_or("The selected checkpoint no longer exists.")?;
     let current = load_snapshot(&dirs[index], &crypto)?;
     let previous = previous_snapshot(&store, &dirs, index, &crypto)?.unwrap_or_default();
-    let patch = patch_text(&previous, &current, &files);
+    let patch = patch_text(&previous, &current, &files)?;
     let export_dir = base.join("exports");
     fs::create_dir_all(&export_dir).map_err(|error| error.to_string())?;
     let target = export_dir.join(format!("recovery-{checkpoint_id}.patch"));
@@ -1018,11 +1204,27 @@ fn export_patch(
     Ok(target.to_string_lossy().into_owned())
 }
 
+struct PatchLines {
+    lines: Vec<String>,
+    has_final_newline: bool,
+}
+
+fn append_patch_lines(patch: &mut String, lines: &PatchLines, prefix: char) {
+    for (index, line) in lines.lines.iter().enumerate() {
+        patch.push(prefix);
+        patch.push_str(line);
+        patch.push('\n');
+        if index + 1 == lines.lines.len() && !lines.has_final_newline {
+            patch.push_str("\\ No newline at end of file\n");
+        }
+    }
+}
+
 fn patch_text(
     previous: &BTreeMap<String, Vec<u8>>,
     current: &BTreeMap<String, Vec<u8>>,
     files: &[String],
-) -> String {
+) -> Result<String, String> {
     let mut patch = String::new();
     for path in files {
         let before = previous.get(path);
@@ -1033,19 +1235,33 @@ fn patch_text(
         let old_lines = match before {
             Some(bytes) => match patch_lines(bytes) {
                 Some(lines) => lines,
-                None => continue,
+                None => {
+                    return Err(format!(
+                        "Cannot export {path}: binary files are not supported in a text patch."
+                    ));
+                }
             },
-            None => Vec::new(),
+            None => PatchLines {
+                lines: Vec::new(),
+                has_final_newline: true,
+            },
         };
         let new_lines = match after {
             Some(bytes) => match patch_lines(bytes) {
                 Some(lines) => lines,
-                None => continue,
+                None => {
+                    return Err(format!(
+                        "Cannot export {path}: binary files are not supported in a text patch."
+                    ));
+                }
             },
-            None => Vec::new(),
+            None => PatchLines {
+                lines: Vec::new(),
+                has_final_newline: true,
+            },
         };
-        let old_start = if old_lines.is_empty() { 0 } else { 1 };
-        let new_start = if new_lines.is_empty() { 0 } else { 1 };
+        let old_start = if old_lines.lines.is_empty() { 0 } else { 1 };
+        let new_start = if new_lines.lines.is_empty() { 0 } else { 1 };
         let old_path = if before.is_some() {
             format!("a/{path}")
         } else {
@@ -1058,27 +1274,22 @@ fn patch_text(
         };
         patch.push_str(&format!(
             "diff --git a/{path} b/{path}\n--- {old_path}\n+++ {new_path}\n@@ -{old_start},{} +{new_start},{} @@\n",
-            old_lines.len(),
-            new_lines.len()
+            old_lines.lines.len(),
+            new_lines.lines.len()
         ));
-        for line in old_lines {
-            patch.push('-');
-            patch.push_str(&line);
-            patch.push('\n');
-        }
-        for line in new_lines {
-            patch.push('+');
-            patch.push_str(&line);
-            patch.push('\n');
-        }
+        append_patch_lines(&mut patch, &old_lines, '-');
+        append_patch_lines(&mut patch, &new_lines, '+');
         patch.push('\n');
     }
-    patch
+    Ok(patch)
 }
 
-fn patch_lines(bytes: &[u8]) -> Option<Vec<String>> {
+fn patch_lines(bytes: &[u8]) -> Option<PatchLines> {
     let text = std::str::from_utf8(bytes).ok()?;
-    Some(text.lines().map(str::to_owned).collect())
+    Some(PatchLines {
+        lines: text.split_terminator('\n').map(str::to_owned).collect(),
+        has_final_newline: text.ends_with('\n'),
+    })
 }
 
 fn encrypt_bytes(content: &[u8], passphrase: &str) -> Result<Vec<u8>, String> {
@@ -1154,7 +1365,7 @@ fn export_encrypted(
     let current = load_snapshot(&dirs[index], &crypto)?;
     let previous = previous_snapshot(&store, &dirs, index, &crypto)?.unwrap_or_default();
     let encrypted = encrypt_bytes(
-        patch_text(&previous, &current, &files).as_bytes(),
+        patch_text(&previous, &current, &files)?.as_bytes(),
         &passphrase,
     )?;
     let export_dir = base.join("exports");
@@ -1331,7 +1542,8 @@ mod tests {
     }
 
     #[test]
-    fn patch_export_is_standard_unified_diff_and_dry_runs() {
+    // @claim:patch-export
+    fn claim_patch_export_is_standard_unified_diff_and_dry_runs() {
         let root = tempfile::tempdir().unwrap();
         fs::create_dir_all(root.path().join("src/auth")).unwrap();
         fs::write(
@@ -1339,14 +1551,30 @@ mod tests {
             "const old = true\n",
         )
         .unwrap();
-        let previous =
-            BTreeMap::from([("src/auth/session.ts".into(), b"const old = true\n".to_vec())]);
-        let current = BTreeMap::from([(
-            "src/auth/session.ts".into(),
-            b"const current = true\nconst queued = false\n".to_vec(),
-        )]);
-        let patch = patch_text(&previous, &current, &["src/auth/session.ts".into()]);
+        fs::write(root.path().join("src/auth/no-final-newline.txt"), "old").unwrap();
+        let previous = BTreeMap::from([
+            ("src/auth/session.ts".into(), b"const old = true\n".to_vec()),
+            ("src/auth/no-final-newline.txt".into(), b"old".to_vec()),
+        ]);
+        let current = BTreeMap::from([
+            (
+                "src/auth/session.ts".into(),
+                b"const current = true\nconst queued = false\n".to_vec(),
+            ),
+            ("src/auth/no-final-newline.txt".into(), b"new".to_vec()),
+        ]);
+        let patch = patch_text(
+            &previous,
+            &current,
+            &[
+                "src/auth/session.ts".into(),
+                "src/auth/no-final-newline.txt".into(),
+            ],
+        )
+        .unwrap();
         assert!(patch.contains("@@ -1,1 +1,2 @@"));
+        assert!(patch
+            .contains("-old\n\\ No newline at end of file\n+new\n\\ No newline at end of file"));
         let mut child = Command::new("patch")
             .args(["--batch", "--dry-run", "-p1", "-d"])
             .arg(root.path())
@@ -1367,6 +1595,8 @@ mod tests {
             "{}",
             String::from_utf8_lossy(&output.stderr)
         );
+        let binary = BTreeMap::from([("binary.dat".into(), vec![0, 159, 146, 150])]);
+        assert!(patch_text(&BTreeMap::new(), &binary, &["binary.dat".into()]).is_err());
     }
 
     #[test]
@@ -1400,6 +1630,8 @@ mod tests {
         let files = read_project(&chosen).unwrap();
         assert_eq!(files.len(), 1);
         assert!(files.contains_key("inside.txt"));
+        #[cfg(unix)]
+        assert_replaced_symlink_parent_is_rejected();
     }
 
     #[test]
@@ -1648,6 +1880,57 @@ mod tests {
         );
     }
 
+    #[cfg(unix)]
+    fn assert_replaced_symlink_parent_is_rejected() {
+        use std::os::unix::fs::symlink;
+
+        let root = tempfile::tempdir().unwrap();
+        let project = root.path().join("project");
+        let outside = root.path().join("outside");
+        let store = root.path().join("ledger");
+        let crypto = test_crypto(&store);
+        fs::create_dir_all(project.join("src")).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(project.join("src/victim.txt"), "safe baseline\n").unwrap();
+        write_checkpoint(
+            &project,
+            &store,
+            &crypto,
+            FREE_RETENTION_MAX,
+            normal_write!("Baseline before agent", vec![]),
+        )
+        .unwrap();
+        fs::write(project.join("src/victim.txt"), "wrong project edit\n").unwrap();
+        let captured = write_checkpoint(
+            &project,
+            &store,
+            &crypto,
+            FREE_RETENTION_MAX,
+            normal_write!("Agent changed victim", vec![]),
+        )
+        .unwrap();
+        let checkpoint_id = captured.last().unwrap().id.clone();
+
+        fs::remove_dir_all(project.join("src")).unwrap();
+        fs::write(outside.join("victim.txt"), "outside sentinel\n").unwrap();
+        symlink(&outside, project.join("src")).unwrap();
+
+        let result = restore_files_in_store(
+            &project,
+            &store,
+            &crypto,
+            FREE_RETENTION_MAX,
+            &checkpoint_id,
+            &["src/victim.txt".into()],
+        );
+
+        assert!(result.is_err(), "a symlinked parent must stop reversal");
+        assert_eq!(
+            fs::read_to_string(outside.join("victim.txt")).unwrap(),
+            "outside sentinel\n"
+        );
+    }
+
     #[test]
     // @claim:local-encryption
     fn claim_local_encryption_keeps_project_content_out_of_ledger_files() {
@@ -1685,6 +1968,23 @@ mod tests {
                 .get("secret.txt"),
             Some(&secret.as_bytes().to_vec())
         );
+    }
+
+    #[test]
+    // @claim:retention-settings-encryption
+    fn claim_retention_settings_are_encrypted_in_the_local_ledger() {
+        let root = tempfile::tempdir().unwrap();
+        let store = root.path().join("ledger");
+        let (_, settings) =
+            open_ledger_store(&store, TEST_PASSPHRASE, Some(FREE_RETENTION_MAX), false).unwrap();
+        assert_eq!(settings.retention, FREE_RETENTION_MAX);
+        let raw = fs::read(storage_path(&store, "settings.enc")).unwrap();
+        assert_eq!(&raw[..4], STORAGE_MAGIC);
+        assert!(!raw
+            .windows(b"retention".len())
+            .any(|window| window == b"retention"));
+        let (_, reopened) = open_encrypted_store(&store, TEST_PASSPHRASE).unwrap();
+        assert_eq!(reopened.retention, FREE_RETENTION_MAX);
     }
 
     #[test]

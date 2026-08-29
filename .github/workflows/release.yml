@@ -33,8 +33,20 @@ jobs:
         with:
           targets: ${{ matrix.target }}
       - if: startsWith(matrix.platform, 'ubuntu')
-        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libfuse2
+        run: sudo apt-get update && sudo apt-get install -y file libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libfuse2
       - run: npm ci
+      - name: Prepare Linux AppImage staging
+        if: startsWith(matrix.platform, 'ubuntu')
+        shell: bash
+        run: |
+          set -euo pipefail
+          # linuxdeploy does not overwrite a partial AppDir left by a prior
+          # bundle attempt. Clear only generated AppImage staging before each
+          # release build so a retried job starts from the same state as CI.
+          rm -rf "src-tauri/target/release/bundle/appimage" "src-tauri/target/${{ matrix.target }}/release/bundle/appimage"
+      - name: Prepare the pinned Linuxdeploy GTK helper
+        if: startsWith(matrix.platform, 'ubuntu')
+        run: node scripts/prepare-linuxdeploy-plugin.mjs
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -46,6 +58,20 @@ jobs:
           releaseDraft: false
           prerelease: false
           args: --target ${{ matrix.target }}
+      - name: Verify Linux installers
+        if: startsWith(matrix.platform, 'ubuntu')
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s globstar nullglob
+          appimages=(src-tauri/target/**/bundle/appimage/*.AppImage)
+          debs=(src-tauri/target/**/bundle/deb/*.deb)
+          rpms=(src-tauri/target/**/bundle/rpm/*.rpm)
+          test "${#appimages[@]}" -eq 1
+          test -s "${appimages[0]}"
+          test "${#debs[@]}" -eq 1
+          test "${#rpms[@]}" -eq 1
+          dpkg-deb --info "${debs[0]}" >/dev/null
 
   manifests:
     needs: build
