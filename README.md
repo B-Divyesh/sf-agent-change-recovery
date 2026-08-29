@@ -51,7 +51,7 @@ npm run build:site
 
 `npm test` starts the built site and runs the Playwright claim, accessibility, mobile, and routing suite. The exact static deploy output is `dist/site`, with `index.html` at that root.
 
-Desktop packages are built only in GitHub Actions. Tag a release such as `v0.1.0`; `.github/workflows/release.yml` builds macOS arm64 and x64, Windows x64, Linux AppImage and deb targets, then publishes `SHA256SUMS` and `latest.json`.
+Desktop packages are built only in GitHub Actions. Tag a release such as `v0.1.1`; `.github/workflows/release.yml` builds macOS arm64 and x64, Windows x64, Linux AppImage and deb targets, then publishes `SHA256SUMS` and `latest.json`.
 
 ## Privacy and security
 

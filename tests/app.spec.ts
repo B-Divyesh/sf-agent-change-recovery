@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -76,6 +76,34 @@ test('@claim:offline-reload reloads the sample ledger offline', async ({ page, c
   await expect(page.getByText('You are offline. Saved ledgers and the demo still work.')).toBeVisible();
 });
 
+test('service worker installs the shipped shell, updates its cache, and keeps the demo offline', async ({ page, context }) => {
+  await page.goto('/demo');
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
+  const installed = await page.evaluate(async () => {
+    const registration = await navigator.serviceWorker.getRegistration();
+    await registration?.update();
+    const keys = await caches.keys();
+    const cache = await caches.open('recovery-ledger-v3');
+    return {
+      active: registration?.active?.state,
+      script: registration?.active?.scriptURL,
+      keys,
+      cachedDemo: Boolean(await cache.match('/demo')),
+      cachedShell: Boolean(await cache.match('/')),
+    };
+  });
+  expect(installed.active).toBe('activated');
+  expect(installed.script).toContain('/sw.js');
+  expect(installed.keys).toContain('recovery-ledger-v3');
+  expect(installed.cachedDemo).toBe(true);
+  expect(installed.cachedShell).toBe(true);
+  await context.setOffline(true);
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Inspect the failed session change');
+});
+
 test('@claim:price shows the exact Pro price and checkout', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('.price')).toContainText('$15');
@@ -145,11 +173,20 @@ test('built security policy keeps frame ancestry in the response header only', a
   expect(errors).toEqual([]);
 });
 
-test('static deployment config has a real 404 and immutable hashed assets', () => {
-  const config = JSON.parse(readFileSync('public/staticwebapp.config.json', 'utf8')) as { routes: { route: string; statusCode?: number; rewrite?: string; headers?: Record<string, string> }[] };
+test('static deployment serves public files before the styled real 404 fallback', async ({ page }) => {
+  const config = JSON.parse(readFileSync('public/staticwebapp.config.json', 'utf8')) as {
+    routes: { route: string; statusCode?: number; rewrite?: string; headers?: Record<string, string> }[];
+    responseOverrides: Record<string, { rewrite?: string }>;
+  };
   expect(config.routes.some(route => route.route === '/' && route.rewrite === '/index.html')).toBe(true);
-  expect(config.routes.some(route => route.route === '/*' && route.statusCode === 404)).toBe(true);
+  expect(config.routes.some(route => route.route === '/*')).toBe(false);
   expect(config.routes.find(route => route.route === '/assets/*')?.headers?.['Cache-Control']).toContain('immutable');
+  expect(config.responseOverrides['404']).toEqual({ rewrite: '/404.html' });
+  for (const file of ['/favicon.svg', '/apple-touch-icon.png', '/robots.txt', '/sitemap.xml', '/404.css', '/404.js']) {
+    expect(existsSync(`dist/site${file}`), `${file} must be published`).toBe(true);
+    const response = await page.goto(file);
+    expect(response?.status(), `${file} must be served`).toBe(200);
+  }
 });
 
 test('every route has its own title and history navigation works', async ({ page }) => {

@@ -6,9 +6,7 @@
     { "route": "/demo", "rewrite": "/index.html" },
     { "route": "/app", "rewrite": "/index.html" },
     { "route": "/privacy", "rewrite": "/index.html" },
-    { "route": "/terms", "rewrite": "/index.html" },
-    { "route": "/404", "rewrite": "/index.html" },
-    { "route": "/*", "statusCode": 404 }
+    { "route": "/terms", "rewrite": "/index.html" }
   ],
   "responseOverrides": {
     "404": { "rewrite": "/404.html" }
