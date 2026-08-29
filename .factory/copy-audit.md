@@ -1,4 +1,4 @@
-# Copy audit — 2026-08-29 repair 8
+# Copy audit — 2026-08-29 repair 9
 
 ## Landing copy
 
@@ -11,7 +11,7 @@
 | 6 | Nothing is saved to your data. |
 | 5 | Project files are encrypted locally. |
 | 8 | The demo works offline after one visit. |
-| 7 | Pro costs $15 per developer each month. |
+| 6 | Checking whether Pro checkout is available. |
 | 7 | Inspect an agent turn before reversing it |
 | 10 | Each checkpoint shows the request, commands, files, and check result. |
 | 6 | Reverse selected changes in three steps |
@@ -33,13 +33,16 @@
 | 5 | Leaving the demo removes its data. |
 | 5 | Keep more encrypted recovery history |
 | 16 | Pro keeps 30 or 90 local checkpoints, adds team policy notes, and exports password-protected recovery files. |
+| 5 | Pro checkout is being enabled. |
+| 5 | Your free ledger keeps working. |
+| 7 | Check back when the price is published. |
 | 6 | Sociobot is the merchant of record. |
 | 7 | The free plan still exports standard patches. |
 | 7 | Choose the build for your computer |
 | 13 | Desktop builds are published for macOS, Windows, and Linux. |
 | 7 | Check the release notes before installing. |
 
-All landing sentences are at or below 22 words. The first screen names the task, audience, primary action, outcome, privacy, offline demo, and price.
+All landing sentences are at or below 22 words. The first screen names the task, audience, primary action, outcome, privacy, offline demo, and live checkout state. The exact Pro price appears only after the public catalog and checkout endpoint both confirm it.
 
 ## Terminology
 

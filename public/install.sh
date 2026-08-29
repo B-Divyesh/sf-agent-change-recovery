@@ -3,7 +3,13 @@ set -eu
 
 repo="B-Divyesh/sf-agent-change-recovery"
 case "$(uname -s)" in
-  Darwin) pattern='\.dmg$' ;;
+  Darwin)
+    case "$(uname -m)" in
+      arm64|aarch64) pattern='_(aarch64|arm64)\.dmg$' ;;
+      x86_64|amd64|i386) pattern='_(x64|x86_64|amd64)\.dmg$' ;;
+      *) echo "This Mac architecture is not supported by the published builds." >&2; exit 1 ;;
+    esac
+    ;;
   Linux) pattern='\.AppImage$' ;;
   *) echo "Use install.ps1 for Windows." >&2; exit 1 ;;
 esac

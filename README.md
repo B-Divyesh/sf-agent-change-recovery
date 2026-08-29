@@ -56,20 +56,19 @@ The app keeps that passphrase only in memory while the ledger is open.
 
 ## Pro plan
 
-Pro costs $15 per developer each month.
-It adds 30 or 90 checkpoint retention, an encrypted local team policy note, and password-protected recovery export.
+Pro adds 30 or 90 checkpoint retention, an encrypted local team policy note, and password-protected recovery export.
 The free plan remains useful: it keeps 2 or 7 checkpoints and exports standard patches.
 
-Choose **Subscribe to Pro** on the landing page to use Sociobot checkout.
-After checkout, the returned license activates on this device.
 Choose **Have a license? Paste it** to restore a purchase on another device.
+The price and **Subscribe to Pro** action appear only after Sociobot publishes a working checkout.
 The app verifies a saved license with Sociobot at most once each day and never sends project files with that request.
-Sociobot and Dodo are the merchant of record.
+When checkout is available, Sociobot and Dodo are the merchant of record.
 
 ## Install a release
 
 The landing page selects the current release for your operating system.
 It links directly to a published macOS, Windows, or Linux file when available.
+For macOS, it shows both Apple silicon and Intel downloads so you can choose the correct build.
 
 ```sh
 curl -fsSL https://agent-change-recovery.sociobot.in/install.sh | sh
@@ -80,7 +79,7 @@ irm https://agent-change-recovery.sociobot.in/install.ps1 | iex
 ```
 
 The Linux and Windows scripts verify the published SHA-256 checksum first.
-macOS builds are unsigned during this release phase.
+macOS builds are unsigned during this release phase. The shell installer picks the matching Apple silicon or Intel disk image.
 Open the disk image, then move the app to Applications.
 For an unsigned build, Control-click the app and choose **Open**.
 
@@ -96,13 +95,13 @@ npm run build
 `npm run build` writes the static deployment output to `dist/site`.
 
 The release workflow builds desktop packages on macOS, Windows, and Linux runners.
-Tag `v0.1.6` or later to start that workflow.
+Tag `v0.1.7` or later to start that workflow.
 It publishes checksums and a release manifest with the desktop files.
 
 ## Privacy
 
 Project contents stay in the desktop app and encrypted ledger storage.
-The browser landing page asks GitHub for current public release filenames.
+The browser landing page asks GitHub for current public release filenames and Sociobot whether Pro checkout is published.
 See the in-product [privacy policy](https://agent-change-recovery.sociobot.in/privacy) and [terms](https://agent-change-recovery.sociobot.in/terms).
 
 ## License

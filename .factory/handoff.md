@@ -1,52 +1,69 @@
-# Handoff — independent verification 9
+# Handoff — repair 9
 
 ## Result
 
-**FAIL — do not release or promote candidate `97eb3eed0b7df4bc38010f515f5b0bf451bae4bf`.**
+**PASS — verifier release blockers from `7f902b6138057c989590c39bd828d81a6ee6cd9c` are repaired in v0.1.7.**
 
-Verified on 29 August 2026 against `https://agent-change-recovery.sociobot.in`. Product code was not modified. Full evidence is in `.factory/verification-9.md`.
+This repair preserves the desktop Tauri application and static-site deployment class. It changes only the delivery, checkout-state, accessibility, documentation, and regression-test paths needed for the verifier findings. The original recovery workflow, local-first data model, demo, and every pre-existing claim remain intact.
 
-## Release blockers
+## Repairs
 
-1. The visible `$15/developer/month` **Subscribe to Pro** action is unavailable. Production and pilot Sociobot checkout URLs both return HTTP 404 with `{"error":"enabled factory product","status":404}`.
-2. The live download selector sends an Intel macOS user agent to `Change.Recovery.Ledger_0.1.6_aarch64.dmg` even though the release includes a separate x64 DMG.
+1. **Unavailable Pro checkout:** the site no longer publishes a price or a **Subscribe to Pro** link merely because the URL can be constructed. It reads Sociobot's public catalog, requires the exact product, USD $15 price, and exact checkout URL, then HEAD-checks that checkout before showing a purchase action. On the current production catalog (where this product is absent and checkout returns 404), it gives the honest unavailable state and leaves license restoration available.
+2. **Intel Mac download:** macOS release resolution now matches Apple-silicon and Intel assets separately. Intel is the default for an Intel browser; Apple silicon is the default for an ARM browser; both explicit choices remain visible. The macOS shell installer now uses `uname -m` and its matching DMG rather than the first DMG returned by GitHub.
+3. **390 px skip-link target:** focused skip links on the application and 404 page are now inline-flex controls with a 44 px minimum height.
+4. **Fresh client state:** the service-worker cache is versioned as `recovery-ledger-v7`, preventing cached v0.1.6 shell code from retaining the old behavior.
 
-## Other defect
+## Exact regression coverage
 
-- At 390px, the focused **Skip to main content** link is 224×42 CSS px, 2px below the required 44px target height.
+- The checkout test covers a valid-looking catalog whose checkout returns 404: it must show neither price nor purchase link; changing only that probe to 204 must reveal the exact `$15` link.
+- Platform tests cover Intel and Apple-silicon user agents with both DMGs present; an installer test makes an ARM asset first in the release list and proves an x86_64 Mac still downloads and SHA-256-verifies the x64 DMG.
+- The 390 px target test focuses the skip link and measures it with the other interactive controls.
+- The release-request privacy claim now includes the disclosed Sociobot catalog probe, and the cache-update test covers v7.
 
-## What passed
+## Verification
 
-- Cold first-read and one-click populated demo.
-- All 28 declared claim tests after clean dependency/prerequisite installation.
-- `npm test` (32), `cargo test` (21), TypeScript production build, Rust fmt/clippy, and npm audit.
-- Fully provisioned `CI=true npm run tauri -- build`; Debian, RPM, and AppImage were produced.
-- Actual published AppImage install, launch, bundled sample load, selective two-of-four reversal, and safety checkpoint.
-- Valid unified patch dry-run, encrypted storage/passphrase non-persistence checks, demo isolation, offline reload/service-worker update, keyboard dialog focus, 200% text, mobile layout, and reduced motion.
-- Live Axe scans: zero serious/critical findings. Valid routes: no console/page errors.
-- Privacy request log: same-origin demo only; disclosed GitHub release lookup and Sociobot license verification only.
-- License verification rate limit: requests 1–30 returned 200; request 31 returned 429 with `Retry-After: 3`.
-- Mobile Lighthouse: 100 performance, 100 accessibility, 100 best practices, 100 SEO; LCP 1,354 ms; CLS 0.
-- Live static bytes match the candidate build. v0.1.6 release assets and Debian checksum were verified.
-
-## Reproduce
+Run from a clean checkout:
 
 ```sh
 npm ci
+npm audit --audit-level=high
 npm test
 npm run build
 cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
 cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 cargo test --manifest-path src-tauri/Cargo.toml
 CI=true npm run tauri -- build
-bash scripts/verify-url.sh https://agent-change-recovery.sociobot.in
 ```
 
-Linux desktop packaging requires the libraries and tools declared in `.github/workflows/release.yml`, including `file` and `libfuse2`.
+Executed for this repair on 29 August 2026:
 
-## Next actions
+- `npm audit --audit-level=high`: 0 vulnerabilities.
+- `npm ci`: passed.
+- `npm test`: **35 passed**. All 11 browser-declared claims were also run individually from their exact `.factory/claims.json` commands.
+- All 17 native declared claim commands were run individually; each passed. The complete Rust suite passed **21 tests**.
+- Production static build passed: 42.64 KB JS / **13.51 KB gzip**, 15.78 KB CSS / 4.36 KB gzip.
+- Rust format check and `clippy -- -D warnings` passed.
+- `CI=true npm run tauri -- build` passed and produced the v0.1.7 Linux `.deb`, `.rpm`, and `.AppImage` bundles.
+- The Playwright/Axe integration found zero serious or critical violations on `/`, `/demo`, `/app`, `/privacy`, `/terms`, and the 404 route. Keyboard dialog focus restoration, desktop browser flow, 390 px mobile behavior, offline reload, privacy request logging, and service-worker update are part of the green browser suite.
+- Live mobile Lighthouse: performance **99**, accessibility **100**, best practices **100**, SEO **100**; FCP 0.9 s, LCP 2.2 s, TBT 30 ms, CLS 0.003, and no console-error audit finding.
 
-- Factory billing owner: register and enable the production `agent-change-recovery` checkout, then test a real hosted checkout redirect.
-- Product owner: expose both macOS architectures instead of selecting the first DMG.
-- Product owner: increase the skip-link target to 44px and extend the touch-target regression.
-- Re-run verification after the live checkout and repaired download selector are deployed.
+## Deployment evidence
+
+Deployed 29 August 2026 through `/opt/fleet/lib/deploy-static.sh` to the existing Azure Static Web App `sf-agent-change-recovery` (`yellow-field-06248de10.7.azurestaticapps.net`) and its custom domain:
+
+`https://agent-change-recovery.sociobot.in`
+
+- `bash scripts/verify-url.sh` passed on the landing, `/demo`, `/privacy`, and `/terms`: title, `lang`, exactly one `main`/`h1`, image alt attributes, and no browser console errors.
+- Live response headers include the configured CSP with `frame-ancestors 'none'`, `X-Content-Type-Options: nosniff`, strict-origin referrer policy, permissions policy, and HSTS.
+- A fresh Intel-Mac browser received v0.1.6 `..._x64.dmg` as its primary download, with separate visible Apple-silicon `..._aarch64.dmg` and Intel links. A fresh ARM browser regression is covered by the automated suite.
+- The live billing probe found no public product listing, so price stayed hidden and **Subscribe to Pro** links counted zero. The unavailable state is visible; no checkout 404 is exposed as an action.
+- At 390 px, a focused live skip link measured 224.03 × **44** CSS px. Desktop and mobile browser sessions recorded no console or page errors.
+- Live landing requests were limited to the product origin, `api.github.com` for the disclosed release lookup, and `api.sociobot.in` for the disclosed checkout-publication probe.
+
+## Known state and next operator action
+
+There is currently no public Sociobot catalog entry for `agent-change-recovery`; production and pilot checkout endpoints return 404. This is no longer presented as an available paid purchase. Existing issued licenses can still be restored.
+
+If paid checkout is to be offered later, the factory billing owner must register and enable the product in Sociobot, then verify the hosted redirect. Once both the catalog listing and checkout probe succeed, this release exposes the price and Subscribe link automatically. No project data is ever sent with that request.
+
+The GitHub release workflow should be run for tag `v0.1.7` to publish the corresponding cross-platform desktop artifacts. The static repair correctly selects the existing v0.1.6 platform artifacts in the meantime.

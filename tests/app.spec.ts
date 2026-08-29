@@ -6,6 +6,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const releaseApiUrl = 'https://api.github.com/repos/B-Divyesh/sf-agent-change-recovery/releases/latest';
+const billingCatalogUrl = 'https://api.sociobot.in/api/v1/products';
+const checkoutUrl = 'https://api.sociobot.in/api/v1/products/agent-change-recovery/checkout';
+const corsHeaders = { 'access-control-allow-origin': '*' };
 
 test.beforeEach(async ({ context }) => {
   await context.addInitScript(() => {
@@ -25,6 +28,7 @@ test.beforeEach(async ({ context }) => {
       browser_download_url: 'https://example.test/Change.Recovery.Ledger_0.1.5-test_amd64.AppImage'
     }]
   } }));
+  await context.route(billingCatalogUrl, route => route.fulfill({ json: { data: [] }, headers: corsHeaders }));
 });
 
 test('@claim:selective-reversal reverses one selected file and keeps the others', async ({ page }) => {
@@ -109,7 +113,7 @@ test('@claim:offline-reload reloads the sample ledger offline', async ({ page, c
   await expect(page.getByText('You are offline. Saved ledgers and the demo still work.')).toBeVisible();
 });
 
-test('@claim:pro-license restores a Sociobot license and shows the documented subscription', async ({ page }) => {
+test('@claim:pro-license restores an issued Sociobot license without exposing an unpublished checkout', async ({ page }) => {
   const requests: string[] = [];
   await page.route('https://api.sociobot.in/api/v1/products/agent-change-recovery/verify?license=sbk-test-license', route => {
     requests.push(route.request().url());
@@ -118,8 +122,8 @@ test('@claim:pro-license restores a Sociobot license and shows the documented su
   await page.goto('/?license=sbk-test-license');
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByText('Pro license active on this device.')).toBeVisible();
-  await expect(page.getByRole('link', { name: /subscribe to pro/i })).toHaveAttribute('href', 'https://api.sociobot.in/api/v1/products/agent-change-recovery/checkout');
-  await expect(page.locator('.price')).toContainText('$15');
+  await expect(page.getByText('Pro checkout is being enabled')).toBeVisible();
+  await expect(page.getByRole('link', { name: /subscribe to pro/i })).toHaveCount(0);
   expect(requests).toEqual(['https://api.sociobot.in/api/v1/products/agent-change-recovery/verify?license=sbk-test-license']);
   expect(await page.evaluate(() => localStorage.getItem('sb_license:agent-change-recovery'))).toBe('sbk-test-license');
   await page.evaluate(() => localStorage.clear());
@@ -128,6 +132,30 @@ test('@claim:pro-license restores a Sociobot license and shows the documented su
   await page.getByRole('button', { name: 'Restore license' }).click();
   await expect(page.getByText('Pro license active on this device.')).toBeVisible();
   expect(requests).toHaveLength(2);
+});
+
+test('checkout availability requires a public listing and a reachable checkout before advertising a purchase', async ({ page, context }) => {
+  let checkoutStatus = 404;
+  await context.route(billingCatalogUrl, route => route.fulfill({ json: {
+    data: [{
+      slug: 'agent-change-recovery',
+      checkout_url: checkoutUrl,
+      price_minor: 1500,
+      currency: 'USD'
+    }]
+  }, headers: corsHeaders }));
+  await context.route(checkoutUrl, route => {
+    expect(route.request().method()).toBe('HEAD');
+    return route.fulfill({ status: checkoutStatus, headers: corsHeaders });
+  });
+  await page.goto('/');
+  await expect(page.getByText('Pro checkout is being enabled')).toBeVisible();
+  await expect(page.getByRole('link', { name: /subscribe to pro/i })).toHaveCount(0);
+  await expect(page.locator('#pro-price')).toBeHidden();
+  checkoutStatus = 204;
+  await page.reload();
+  await expect(page.getByRole('link', { name: /subscribe to pro/i })).toHaveAttribute('href', checkoutUrl);
+  await expect(page.locator('#pro-price')).toContainText('$15');
 });
 
 test('@claim:license-daily-verification checks a saved license once per day', async ({ page }) => {
@@ -153,7 +181,7 @@ test('service worker installs the shipped shell, updates its cache, and keeps th
     const registration = await navigator.serviceWorker.getRegistration();
     await registration?.update();
     const keys = await caches.keys();
-    const cache = await caches.open('recovery-ledger-v6');
+    const cache = await caches.open('recovery-ledger-v7');
     return {
       active: registration?.active?.state,
       script: registration?.active?.scriptURL,
@@ -164,7 +192,7 @@ test('service worker installs the shipped shell, updates its cache, and keeps th
   });
   expect(installed.active).toBe('activated');
   expect(installed.script).toContain('/sw.js');
-  expect(installed.keys).toContain('recovery-ledger-v6');
+  expect(installed.keys).toContain('recovery-ledger-v7');
   expect(installed.cachedDemo).toBe(true);
   expect(installed.cachedShell).toBe(true);
   await context.setOffline(true);
@@ -175,21 +203,42 @@ test('service worker installs the shipped shell, updates its cache, and keeps th
 test('@claim:platform-download selects exact assets for Linux, macOS, and Windows', async ({ browser }) => {
   const assets = [
     { name: 'Change.Recovery.Ledger_0.1.2_amd64.AppImage', browser_download_url: 'https://example.test/linux.AppImage' },
-    { name: 'Change.Recovery.Ledger_0.1.2_x64.dmg', browser_download_url: 'https://example.test/macos.dmg' },
+    { name: 'Change.Recovery.Ledger_0.1.2_aarch64.dmg', browser_download_url: 'https://example.test/macos-arm64.dmg' },
+    { name: 'Change.Recovery.Ledger_0.1.2_x64.dmg', browser_download_url: 'https://example.test/macos-x64.dmg' },
     { name: 'Change.Recovery.Ledger_0.1.2_x64-setup.exe', browser_download_url: 'https://example.test/windows.exe' }
   ];
   for (const [userAgent, expected] of [
     ['Mozilla/5.0 (X11; Linux x86_64)', 'https://example.test/linux.AppImage'],
-    ['Mozilla/5.0 (Macintosh; Intel Mac OS X)', 'https://example.test/macos.dmg'],
+    ['Mozilla/5.0 (Macintosh; Intel Mac OS X)', 'https://example.test/macos-x64.dmg'],
     ['Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'https://example.test/windows.exe']
   ]) {
     const context = await browser.newContext({ userAgent });
     const page = await context.newPage();
     await page.route(releaseApiUrl, route => route.fulfill({ json: { tag_name: 'v0.1.2', assets } }));
+    await page.route(billingCatalogUrl, route => route.fulfill({ json: { data: [] }, headers: corsHeaders }));
     await page.goto('/');
     await expect(page.locator('#download-button')).toHaveAttribute('href', expected);
+    if (userAgent.includes('Macintosh')) {
+      await expect(page.locator('[data-macos-downloads]')).toBeVisible();
+      await expect(page.locator('[data-macos-arm]')).toHaveAttribute('href', 'https://example.test/macos-arm64.dmg');
+      await expect(page.locator('[data-macos-intel]')).toHaveAttribute('href', 'https://example.test/macos-x64.dmg');
+    }
     await context.close();
   }
+});
+
+test('Apple silicon Mac visitors receive the ARM build and can still choose Intel', async ({ browser }) => {
+  const context = await browser.newContext({ userAgent: 'Mozilla/5.0 (Macintosh; ARM64 Mac OS X)' });
+  const page = await context.newPage();
+  await page.route(releaseApiUrl, route => route.fulfill({ json: { tag_name: 'v0.1.2', assets: [
+    { name: 'Change.Recovery.Ledger_0.1.2_aarch64.dmg', browser_download_url: 'https://example.test/macos-arm64.dmg' },
+    { name: 'Change.Recovery.Ledger_0.1.2_x64.dmg', browser_download_url: 'https://example.test/macos-x64.dmg' }
+  ] } }));
+  await page.route(billingCatalogUrl, route => route.fulfill({ json: { data: [] }, headers: corsHeaders }));
+  await page.goto('/');
+  await expect(page.locator('#download-button')).toHaveAttribute('href', 'https://example.test/macos-arm64.dmg');
+  await expect(page.locator('[data-macos-intel]')).toHaveAttribute('href', 'https://example.test/macos-x64.dmg');
+  await context.close();
 });
 
 test('@claim:release-request-privacy requests only the disclosed GitHub release API', async ({ page }) => {
@@ -198,7 +247,7 @@ test('@claim:release-request-privacy requests only the disclosed GitHub release 
   await page.route(releaseApiUrl, route => route.fulfill({ json: { tag_name: 'v0.1.2', assets: [] } }));
   await page.goto('/');
   await expect(page.locator('#download-status')).not.toHaveText('Checking published releases…');
-  expect([...origins].sort()).toEqual(['http://127.0.0.1:4173', 'https://api.github.com']);
+  expect([...origins].sort()).toEqual(['http://127.0.0.1:4173', 'https://api.github.com', 'https://api.sociobot.in']);
 });
 
 for (const path of ['/', '/demo', '/app', '/privacy', '/terms', '/missing-sheet']) {
@@ -231,14 +280,16 @@ test('mobile first screen shows the action result and all three facts', async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
   await expect(page.locator('.action-note')).toBeInViewport();
-  for (const text of ['Project files are encrypted locally.', 'The demo works offline after one visit.', 'Pro costs $15 per developer each month.']) await expect(page.getByText(text, { exact: true })).toBeInViewport();
+  for (const text of ['Project files are encrypted locally.', 'The demo works offline after one visit.', 'Pro checkout is not available yet.']) await expect(page.getByText(text, { exact: true })).toBeInViewport();
 });
 
 test('mobile links and controls meet the 44px touch-target baseline', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
   await page.getByRole('button', { name: 'Menu' }).click();
-  const targets = await page.locator('.brand, .site-nav a, .footer-links a, .preview-detail .button.small').evaluateAll(nodes =>
+  const skip = page.locator('.skip-link');
+  await skip.focus();
+  const targets = await page.locator('.skip-link, .brand, .site-nav a, .footer-links a, .preview-detail .button.small').evaluateAll(nodes =>
     nodes.map(node => {
       const box = node.getBoundingClientRect();
       return { text: node.textContent?.trim(), width: box.width, height: box.height };
@@ -410,6 +461,54 @@ esac
     expect(existsSync(target)).toBe(true);
     expect(statSync(target).mode & 0o111).not.toBe(0);
     expect(execFileSync(target, { encoding: 'utf8' })).toBe('ledger mock\n');
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+});
+
+test('macOS installer selects the Intel disk image instead of the first ARM asset', () => {
+  const sandbox = mkdtempSync(join(tmpdir(), 'acr-macos-install-'));
+  const mockBin = join(sandbox, 'bin');
+  const asset = join(sandbox, 'Change.Recovery.Ledger_0.1.2_x64.dmg');
+  const file = 'Change.Recovery.Ledger_0.1.2_x64.dmg';
+  mkdirSync(mockBin);
+  writeFileSync(asset, 'verified Intel Mac disk image');
+  const checksum = execFileSync('sha256sum', [asset], { encoding: 'utf8' }).split(/\s+/)[0];
+  const uname = join(mockBin, 'uname');
+  writeFileSync(uname, `#!/bin/sh
+case "$1" in
+  -s) printf '%s\\n' Darwin ;;
+  -m) printf '%s\\n' x86_64 ;;
+esac
+`);
+  const curl = join(mockBin, 'curl');
+  writeFileSync(curl, `#!/bin/sh
+set -eu
+output=""
+next=""
+last=""
+for argument in "$@"; do
+  if [ "$next" = "yes" ]; then output="$argument"; next=""; continue; fi
+  if [ "$argument" = "-o" ]; then next="yes"; continue; fi
+  last="$argument"
+done
+case "$last" in
+  *releases/latest) printf '%s' '{"assets":[{"name":"Change.Recovery.Ledger_0.1.2_aarch64.dmg","browser_download_url":"https://example.test/arm.dmg"},{"name":"${file}","browser_download_url":"https://example.test/${file}"},{"name":"SHA256SUMS","browser_download_url":"https://example.test/SHA256SUMS"}]}' ;;
+  *SHA256SUMS) printf '%s  %s\\n' '${checksum}' '${file}' ;;
+  *${file}) cp "$MOCK_ASSET" "$output" ;;
+  *) exit 1 ;;
+esac
+`);
+  chmodSync(uname, 0o755);
+  chmodSync(curl, 0o755);
+  try {
+    const output = execFileSync('/bin/sh', ['public/install.sh'], {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+      env: { ...process.env, PATH: `${mockBin}:${process.env.PATH}`, TMPDIR: sandbox, MOCK_ASSET: asset }
+    });
+    expect(output).toContain(`Downloaded and verified ${file}`);
+    expect(output).not.toContain('aarch64');
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
   }

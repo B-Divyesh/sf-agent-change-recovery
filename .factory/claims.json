@@ -29,10 +29,10 @@
   },
   {
     "id": "pro-license",
-    "claim": "Pro costs $15 per developer each month and restores through a Sociobot license.",
-    "where": "landing pricing section and terms",
+    "claim": "An issued Sociobot license restores Pro on this device, and an unpublished checkout is not shown as a purchase action.",
+    "where": "landing Pro section, terms, and license restore form",
     "test": "npm test -- --grep @claim:pro-license",
-    "sandbox": "fresh landing; mock Sociobot license verification; restore a license and assert active Pro status and the documented checkout URL"
+    "sandbox": "fresh landing with a mocked unpublished Sociobot catalog; restore an issued license and assert active Pro status with no purchase link"
   },
   {
     "id": "license-daily-verification",

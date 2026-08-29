@@ -44,7 +44,8 @@ const demoKey = 'demo:agent-change-recovery:ledger';
 const releasePage = 'https://github.com/B-Divyesh/sf-agent-change-recovery/releases';
 const productSlug = 'agent-change-recovery';
 const billingBase = 'https://api.sociobot.in/api/v1';
-const checkoutUrl = `${billingBase}/products/${productSlug}/checkout`;
+const productCatalog = `${billingBase}/products`;
+const proPriceMinor = 1500;
 const licenseKey = `sb_license:${productSlug}`;
 const licenseCacheKey = `${licenseKey}:verification`;
 let activeCheckpoint = 'cp-3';
@@ -213,7 +214,7 @@ function header() {
 function footer() {
   return `
     <footer class="site-footer">
-      <div><strong>Change Recovery Ledger</strong><p class="muted">Reverse selected agent changes without losing the rest.</p><small>Original generated artwork · v0.1.6 · build 2026.08.29</small></div>
+      <div><strong>Change Recovery Ledger</strong><p class="muted">Reverse selected agent changes without losing the rest.</p><small>Original generated artwork · v0.1.7 · build 2026.08.29</small></div>
       <nav class="footer-links" aria-label="Footer navigation"><a href="/privacy" data-route>Privacy</a><a href="/terms" data-route>Terms</a><a href="https://sociobot.in" rel="external">Built by Param Factory<span class="sr-only"> (external site)</span></a></nav>
     </footer>`;
 }
@@ -256,7 +257,11 @@ function retentionOptions() {
 }
 
 function pricingMarkup() {
-  return `<section class="section section-ink" id="pricing"><div class="sheet price-strip"><div><p class="eyebrow">Pro plan</p><h2>Keep more encrypted recovery history</h2><p class="max-text">Pro keeps 30 or 90 local checkpoints, adds team policy notes, and exports password-protected recovery files.</p><p class="price">$15 <small>per developer / month</small></p><p class="muted" id="license-status">${escapeHtml(licenseStatusText())}</p></div><div><a class="button" id="buy-pro" href="${checkoutUrl}" rel="external">Subscribe to Pro<span class="sr-only"> (opens Sociobot checkout)</span></a><form id="license-form" class="license-form"><label for="license-token">Have a license? Paste it<input id="license-token" name="license" required autocomplete="off" placeholder="sb_license…"></label><button class="secondary" type="submit">Restore license</button></form><p class="field-help">Sociobot is the merchant of record. The free plan still exports standard patches.</p></div></div></section>`;
+  return `<section class="section section-ink" id="pricing"><div class="sheet price-strip"><div><p class="eyebrow">Pro plan</p><h2>Keep more encrypted recovery history</h2><p class="max-text">Pro keeps 30 or 90 local checkpoints, adds team policy notes, and exports password-protected recovery files.</p><p class="price" id="pro-price" hidden></p><p class="muted" id="license-status">${escapeHtml(licenseStatusText())}</p></div><div><div id="checkout-action" aria-live="polite"><span class="muted">Checking whether Pro checkout is available…</span></div><form id="license-form" class="license-form"><label for="license-token">Have a license? Paste it<input id="license-token" name="license" required autocomplete="off" placeholder="sb_license…"></label><button class="secondary" type="submit">Restore license</button></form><p class="field-help">Sociobot is the merchant of record. The free plan still exports standard patches.</p></div></div></section>`;
+}
+
+function downloadMarkup(buttonId: string, statusId: string) {
+  return `<a class="button blue" id="${buttonId}" data-download-primary href="${releasePage}">View available downloads</a><div class="macos-downloads" data-macos-downloads hidden><p class="field-help">Choose the build for your Mac.</p><div class="macos-download-actions"><a class="button secondary" data-macos-arm href="${releasePage}">Apple silicon</a><a class="button secondary" data-macos-intel href="${releasePage}">Intel Mac</a></div></div><p id="${statusId}" class="muted">Checking published releases…</p>`;
 }
 
 function landing() {
@@ -266,7 +271,7 @@ function landing() {
         <h1>Reverse the wrong agent changes</h1>
         <p class="lede">For developers supervising long agent sessions who need to recover one change without discarding the rest.</p>
         <div class="hero-actions"><a class="button" href="/?demo=1" data-route>Try it with sample data</a><span class="action-note">A loaded ledger opens next. Nothing is saved to your data.</span></div>
-        <ul class="facts"><li>Project files are encrypted locally.</li><li>The demo works offline after one visit.</li><li>Pro costs $15 per developer each month.</li></ul>
+        <ul class="facts"><li>Project files are encrypted locally.</li><li>The demo works offline after one visit.</li><li id="pro-fact" aria-live="polite">Checking whether Pro checkout is available.</li></ul>
       </div>
       <figure class="hero-art"><img src="/assets/hero-ledger-800.webp" srcset="/assets/hero-ledger-600.webp 600w, /assets/hero-ledger-800.webp 800w" sizes="(max-width: 850px) calc(100vw - 32px), min(800px, 52vw)" width="1200" height="800" alt="A paper code ledger where one faulty strip is lifted while the others stay pinned." fetchpriority="high" decoding="async"><figcaption class="art-caption">REVERSE ONE FILE / KEEP THE REST</figcaption></figure>
     </section>
@@ -275,7 +280,7 @@ function landing() {
     <section class="section walkthrough"><div class="sheet"><p class="eyebrow">Desktop walkthrough</p><h2>See one selected file reversed</h2><ol class="walkthrough-grid"><li><img src="/assets/walkthrough-1.webp" width="900" height="620" loading="lazy" decoding="async" alt="The sample ledger with one failed session file selected."><strong>1 / Select the suspect file</strong></li><li><img src="/assets/walkthrough-2.webp" width="900" height="426" loading="lazy" decoding="async" alt="A confirmation names the selected files and safety checkpoint."><strong>2 / Confirm the safety checkpoint</strong></li><li><img src="/assets/walkthrough-3.webp" width="900" height="618" loading="lazy" decoding="async" alt="The ledger shows reversed files and a new safety checkpoint."><strong>3 / Keep the recovery record</strong></li></ol></div></section>
     <section class="section"><div class="sheet split"><div><p class="eyebrow">What stays on your device</p><h2>It does not replace Git</h2></div><div class="max-text"><p>The ledger leaves Git data out of its checkpoints. It records the folder you choose.</p><p>Checkpoint files can contain secrets. A passphrase encrypts every local snapshot and manifest. Delete a local ledger when you no longer need it. This keeps your project files unchanged.</p><p>The demo uses a separate <code>demo:</code> browser storage key. Leaving the demo removes its data.</p></div></div></section>
     ${pricingMarkup()}
-    <section class="section"><div class="sheet split"><div><p class="eyebrow">Desktop app</p><h2>Choose the build for your computer</h2><p class="max-text">Desktop builds are published for macOS, Windows, and Linux. Check the release notes before installing.</p></div><div><a class="button blue" id="download-button" href="${releasePage}">View available downloads</a><p id="download-status" class="muted">Checking published releases…</p></div></div></section>
+    <section class="section"><div class="sheet split"><div><p class="eyebrow">Desktop app</p><h2>Choose the build for your computer</h2><p class="max-text">Desktop builds are published for macOS, Windows, and Linux. Check the release notes before installing.</p></div><div>${downloadMarkup('download-button', 'download-status')}</div></div></section>
   </main>${footer()}`;
 }
 
@@ -324,13 +329,13 @@ function realAppPage() {
   const pro = isPro();
   return `${header()}<main id="main" tabindex="-1" class="app-shell"><div class="app-heading"><div><p class="eyebrow">Local project</p><h1>Capture an agent turn</h1></div><span class="chip ${desktop ? 'pass' : 'warn'}">${desktop ? 'Desktop ready' : 'Browser preview'}</span></div>
     <section class="capture-panel" aria-labelledby="capture-title"><h2 id="capture-title">New checkpoint</h2>${desktop ? '<div class="capture-actions"><button class="secondary" id="load-sample-project" type="button">Load sample project</button><button class="secondary" id="reset-sample-project" type="button">Reset sample project</button><button class="secondary" id="open-local-ledger" type="button">Open local ledger</button>' + (pro ? '<button class="secondary" id="open-encrypted-recovery" type="button">Open encrypted recovery</button>' : '') + '<p class="field-help">The bundled sample is stored separately from projects you choose.</p></div>' : '<p class="notice">Folder access starts in the desktop app. Download it to record a project you choose.</p>'}<form id="capture-form" class="capture-grid"><label>Project folder<input id="project-path" name="path" required placeholder="/Users/me/project" ${desktop ? '' : 'disabled'}><span class="field-help">Type the full path to one local project.</span></label><label>Agent intent<input id="checkpoint-intent" name="intent" required placeholder="Fix session refresh race" ${desktop ? '' : 'disabled'}><span class="field-help">Describe the requested result.</span></label><label>Commands<textarea id="checkpoint-commands" name="commands" rows="2" placeholder="npm test" ${desktop ? '' : 'disabled'}></textarea></label><label>Ledger passphrase<input id="ledger-passphrase" name="passphrase" type="password" minlength="12" required autocomplete="current-password" ${desktop ? '' : 'disabled'}><span class="field-help">Encrypts every local snapshot. It is never saved.</span></label><label>Retention<select id="retention" name="retention" ${desktop ? '' : 'disabled'}>${retentionOptions()}</select><span class="field-help">The oldest checkpoint is pruned safely.</span></label>${pro ? `<label>Team policy note<textarea id="team-policy" name="policy" rows="2" placeholder="Review authentication changes before reversal" ${desktop ? '' : 'disabled'}>${escapeHtml(realPolicy)}</textarea><span class="field-help">Saved in this encrypted local ledger.</span></label>` : '<p class="field-help pro-note">Pro adds 30/90 checkpoint retention and an encrypted team policy note.</p>'}<button class="primary" type="submit" ${desktop ? '' : 'disabled'}>Capture checkpoint</button></form></section>
-    <div id="real-ledger">${desktop ? '<div class="empty-state"><div class="empty-mark" aria-hidden="true">＋</div><h2>No project loaded</h2><p>Load the bundled sample or capture an agent turn.</p></div>' : '<div class="empty-state"><div class="empty-mark" aria-hidden="true">⌁</div><h2>Download the desktop app</h2><p>The browser cannot read project folders. The desktop app records only the folder you choose.</p><a class="button" id="app-download-button" href="' + releasePage + '">View available downloads</a><p id="app-download-status" class="muted">Checking published releases…</p></div>'}</div>
+    <div id="real-ledger">${desktop ? '<div class="empty-state"><div class="empty-mark" aria-hidden="true">＋</div><h2>No project loaded</h2><p>Load the bundled sample or capture an agent turn.</p></div>' : '<div class="empty-state"><div class="empty-mark" aria-hidden="true">⌁</div><h2>Download the desktop app</h2><p>The browser cannot read project folders. The desktop app records only the folder you choose.</p>' + downloadMarkup('app-download-button', 'app-download-status') + '</div>'}</div>
   </main>${footer()}`;
 }
 
 function legalPage(kind: 'privacy' | 'terms') {
-  const privacy = `<p><strong>Effective 29 August 2026.</strong></p><h2>Project data stays local</h2><p>The desktop app reads only the project folder you enter. It does not send project files, patches, commands, or intent notes to us.</p><p>Your ledger passphrase encrypts local snapshots, manifests, retention settings, and policy notes. The passphrase stays in app memory while the ledger is open. It is not written to disk.</p><h2>Demo data is separate</h2><p>The browser demo stores its sample state under <code>${demoKey}</code>. Resetting or leaving the demo removes that state.</p><h2>Download and license checks</h2><p>The landing page asks the GitHub API for current public release files. That request is sent to GitHub.</p><p>If you subscribe or restore a license, the app sends that license token to Sociobot only to verify it. The app checks no more than once each day. Project files are never part of that request.</p><h2>Delete your data</h2><p>Open a local ledger in the desktop app. Choose Delete local ledger. This removes local snapshots only. It does not change files in your project folder. You can also clear this site’s browser storage. Contact <a href="mailto:privacy@sociobot.in">privacy@sociobot.in</a> with privacy questions.</p>`;
-  const terms = `<p><strong>Effective 29 August 2026.</strong></p><h2>Use of the app</h2><p>You may use the app to checkpoint folders you are allowed to access. Review every reversal and patch before relying on it.</p><h2>Pro plan</h2><p>Pro costs $15 per developer each month. It adds 30 or 90 checkpoint retention, a local team policy note, and password-protected recovery export.</p><p>Sociobot and Dodo are the merchant of record. Refunds are handled through their checkout. A refunded license is revoked automatically.</p><h2>Git and backups</h2><p>The app is not Git and is not a full backup service. Keep normal version control and backups. Git metadata is excluded from checkpoints.</p><h2>Warranty</h2><p>The software is provided under the MIT License, without warranty. You are responsible for reviewing reversed files and exported patches.</p><h2>Contact</h2><p>Send terms questions to <a href="mailto:support@sociobot.in">support@sociobot.in</a>.</p>`;
+  const privacy = `<p><strong>Effective 29 August 2026.</strong></p><h2>Project data stays local</h2><p>The desktop app reads only the project folder you enter. It does not send project files, patches, commands, or intent notes to us.</p><p>Your ledger passphrase encrypts local snapshots, manifests, retention settings, and policy notes. The passphrase stays in app memory while the ledger is open. It is not written to disk.</p><h2>Demo data is separate</h2><p>The browser demo stores its sample state under <code>${demoKey}</code>. Resetting or leaving the demo removes that state.</p><h2>Download and license checks</h2><p>The landing page asks the GitHub API for current public release files. It asks Sociobot whether Pro checkout is published.</p><p>If you restore a license, the app sends that license token to Sociobot only to verify it. The app checks no more than once each day. Project files are never part of that request.</p><h2>Delete your data</h2><p>Open a local ledger in the desktop app. Choose Delete local ledger. This removes local snapshots only. It does not change files in your project folder. You can also clear this site’s browser storage. Contact <a href="mailto:privacy@sociobot.in">privacy@sociobot.in</a> with privacy questions.</p>`;
+  const terms = `<p><strong>Effective 29 August 2026.</strong></p><h2>Use of the app</h2><p>You may use the app to checkpoint folders you are allowed to access. Review every reversal and patch before relying on it.</p><h2>Pro plan</h2><p>Pro adds 30 or 90 checkpoint retention, a local team policy note, and password-protected recovery export.</p><p>The price and purchase action appear only when Sociobot publishes a working checkout. An issued license can be restored on another device.</p><h2>Git and backups</h2><p>The app is not Git and is not a full backup service. Keep normal version control and backups. Git metadata is excluded from checkpoints.</p><h2>Warranty</h2><p>The software is provided under the MIT License, without warranty. You are responsible for reviewing reversed files and exported patches.</p><h2>Contact</h2><p>Send terms questions to <a href="mailto:support@sociobot.in">support@sociobot.in</a>.</p>`;
   const title = kind === 'privacy' ? 'Read the privacy policy' : 'Read the terms of use';
   return `${header()}<main id="main" tabindex="-1" class="sheet legal"><article><p class="eyebrow">${kind}</p><h1>${title}</h1>${kind === 'privacy' ? privacy : terms}</article></main>${footer()}`;
 }
@@ -360,9 +365,8 @@ function render(focus = false) {
     const heading = document.querySelector<HTMLElement>('h1');
     if (y === 0) heading?.focus({ preventScroll: false });
   }
-  if (path === '/' || path === '/app') {
-    void resolveDownload();
-  }
+  if (path === '/' || path === '/app') void resolveDownload();
+  if (path === '/') void resolveCheckout();
   announce(document.querySelector('h1')?.textContent ?? product);
 }
 
@@ -713,12 +717,26 @@ function refreshLedgerView() {
   if (container) container.innerHTML = ledgerMarkup(realLedger, false);
 }
 
+function releaseAsset(release: Release, pattern: RegExp) {
+  return release.assets.find(item => pattern.test(item.name));
+}
+
+function setDownloadButtons(buttons: HTMLAnchorElement[], asset: ReleaseAsset, label: string) {
+  for (const button of buttons) {
+    button.href = asset.browser_download_url;
+    button.textContent = label;
+  }
+}
+
+function hideMacDownloadChoices() {
+  for (const group of document.querySelectorAll<HTMLElement>('[data-macos-downloads]')) group.hidden = true;
+}
+
 async function resolveDownload() {
-  const buttons = [...document.querySelectorAll<HTMLAnchorElement>('#download-button, #app-download-button')];
+  const buttons = [...document.querySelectorAll<HTMLAnchorElement>('[data-download-primary]')];
   const statuses = [...document.querySelectorAll<HTMLElement>('#download-status, #app-download-status')];
   if (!buttons.length || !statuses.length) return;
   const os = /Win/i.test(navigator.userAgent) ? 'Windows' : /Mac/i.test(navigator.userAgent) ? 'macOS' : 'Linux';
-  const patterns = os === 'Windows' ? [/\.msi$/i, /\.exe$/i] : os === 'macOS' ? [/\.dmg$/i, /\.app\.tar\.gz$/i] : [/\.AppImage$/i, /\.deb$/i];
   try {
     const cacheRaw = localStorage.getItem('release:agent-change-recovery');
     const cache = cacheRaw ? JSON.parse(cacheRaw) as { saved: number; value: Release } : null;
@@ -730,17 +748,83 @@ async function resolveDownload() {
       release = await response.json() as Release;
       localStorage.setItem('release:agent-change-recovery', JSON.stringify({ saved: Date.now(), value: release }));
     }
-    const asset = release.assets.find(item => patterns.some(pattern => pattern.test(item.name)));
+    if (os === 'macOS') {
+      const appleSilicon = releaseAsset(release, /(?:aarch64|arm64).*(?:\.dmg|\.app\.tar\.gz)$/i);
+      const intel = releaseAsset(release, /(?:x64|x86_64|amd64).*(?:\.dmg|\.app\.tar\.gz)$/i);
+      if (!appleSilicon || !intel) throw new Error('Both macOS builds are not published yet');
+      const prefersAppleSilicon = /(?:arm64|aarch64)/i.test(navigator.userAgent);
+      const primary = prefersAppleSilicon ? appleSilicon : intel;
+      setDownloadButtons(buttons, primary, `Download for macOS (${prefersAppleSilicon ? 'Apple silicon' : 'Intel'})`);
+      for (const group of document.querySelectorAll<HTMLElement>('[data-macos-downloads]')) {
+        group.hidden = false;
+        const armLink = group.querySelector<HTMLAnchorElement>('[data-macos-arm]')!;
+        const intelLink = group.querySelector<HTMLAnchorElement>('[data-macos-intel]')!;
+        armLink.href = appleSilicon.browser_download_url;
+        armLink.textContent = 'Apple silicon';
+        intelLink.href = intel.browser_download_url;
+        intelLink.textContent = 'Intel Mac';
+      }
+      for (const status of statuses) status.textContent = `${release.tag_name} · Choose Apple silicon or Intel.`;
+      return;
+    }
+    hideMacDownloadChoices();
+    const asset = os === 'Windows'
+      ? releaseAsset(release, /\.msi$/i) ?? releaseAsset(release, /\.exe$/i)
+      : releaseAsset(release, /\.AppImage$/i) ?? releaseAsset(release, /\.deb$/i);
     if (!asset) throw new Error('Platform build pending');
-    for (const button of buttons) { button.href = asset.browser_download_url; button.textContent = `Download for ${os}`; }
+    setDownloadButtons(buttons, asset, `Download for ${os}`);
     for (const status of statuses) status.textContent = `${release.tag_name} · ${asset.name}`;
   } catch {
+    hideMacDownloadChoices();
     for (const button of buttons) { button.href = releasePage; button.textContent = 'View release page'; }
     for (const status of statuses) status.textContent = `The ${os} download is being published. The release page shows current files.`;
   }
 }
 
-type Release = { tag_name: string; assets: { name: string; browser_download_url: string }[] };
+type ReleaseAsset = { name: string; browser_download_url: string };
+type Release = { tag_name: string; assets: ReleaseAsset[] };
+type ProductListing = { slug: string; checkout_url: string; price_minor: number; currency: string };
+
+function setCheckoutUnavailable() {
+  const action = document.querySelector<HTMLElement>('#checkout-action');
+  const price = document.querySelector<HTMLElement>('#pro-price');
+  const fact = document.querySelector<HTMLElement>('#pro-fact');
+  if (action) action.innerHTML = '<span class="button unavailable" aria-disabled="true">Pro checkout is being enabled</span><p class="field-help">Your free ledger keeps working. Check back when the price is published.</p>';
+  if (price) {
+    price.hidden = true;
+    price.textContent = '';
+  }
+  if (fact) fact.textContent = 'Pro checkout is not available yet.';
+}
+
+async function resolveCheckout() {
+  const action = document.querySelector<HTMLElement>('#checkout-action');
+  const price = document.querySelector<HTMLElement>('#pro-price');
+  const fact = document.querySelector<HTMLElement>('#pro-fact');
+  if (!action || !price || !fact) return;
+  try {
+    const catalogResponse = await fetch(productCatalog);
+    if (!catalogResponse.ok) throw new Error('Product catalog unavailable');
+    const catalog = await catalogResponse.json() as { data?: ProductListing[] };
+    const listed = catalog.data?.find(item => item.slug === productSlug);
+    const checkout = listed ? new URL(listed.checkout_url) : null;
+    if (
+      !listed ||
+      listed.price_minor !== proPriceMinor ||
+      listed.currency !== 'USD' ||
+      checkout?.origin !== 'https://api.sociobot.in' ||
+      checkout.pathname !== `/api/v1/products/${productSlug}/checkout`
+    ) throw new Error('Product checkout is not published');
+    const checkoutResponse = await fetch(checkout.href, { method: 'HEAD', redirect: 'manual' });
+    if (!checkoutResponse.ok && checkoutResponse.type !== 'opaqueredirect') throw new Error('Product checkout is unavailable');
+    price.hidden = false;
+    price.innerHTML = '$15 <small>per developer / month</small>';
+    fact.textContent = 'Pro costs $15 per developer each month.';
+    action.innerHTML = `<a class="button" id="buy-pro" href="${escapeHtml(checkout.href)}" rel="external">Subscribe to Pro<span class="sr-only"> (opens Sociobot checkout)</span></a>`;
+  } catch {
+    setCheckoutUnavailable();
+  }
+}
 
 document.addEventListener('click', event => {
   const target = event.target as HTMLElement;
