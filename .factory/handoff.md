@@ -4,6 +4,8 @@
 
 **PASS — verifier release blockers from `7f902b6138057c989590c39bd828d81a6ee6cd9c` are repaired in v0.1.7.**
 
+Repair commit: `bc96569` (`fix: repair verifier release blockers`), pushed to `origin/main`.
+
 This repair preserves the desktop Tauri application and static-site deployment class. It changes only the delivery, checkout-state, accessibility, documentation, and regression-test paths needed for the verifier findings. The original recovery workflow, local-first data model, demo, and every pre-existing claim remain intact.
 
 ## Repairs
