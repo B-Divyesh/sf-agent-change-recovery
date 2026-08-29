@@ -1,40 +1,41 @@
-# Handoff — adversarial review 1
+# Handoff — polish 1
 
-## Outcome
+## Delivered
 
-Review 1 is complete with verdict **FAIL**. The complete report is
-[`review-1.md`](review-1.md). No product code was changed.
+- Repaired every F-1-1 through F-1-44 finding from `review-1.md`.
+- Added direct `?demo=1` entry, persistent isolated-demo controls, exit cleanup, and a release-resolved real-app handoff.
+- Added Tauri **Load sample project**, **Reset sample project**, and **Open local ledger** paths.
+- Removed unavailable checkout and license claims from the release.
+- Rewrote first-screen, product, legal, README, metadata, and 404 copy in plain language.
+- Added route OG/Twitter updates, real static 404 metadata/skeleton, manual history restoration, and 390px first-screen coverage.
+- Added claims ledger coverage for every remaining visitor promise.
+- Updated the desktop release to `v0.1.4` and corrected Ubuntu AppImage workflow prerequisites.
 
-Blocking findings: broken Back-button scroll restoration; demo state retained on
-exit; a dead-end **Start for real** route; no bundled native sample; advertised
-but unavailable checkout; and inadequate network-privacy proof.
+## Commits and deployment
 
-## Verification performed
+- Product repair: `34a462c`.
+- CI/release repair: `c5a801d`, `0556716`.
+- Pushed `main` and release tags `v0.1.3`, `v0.1.4` to `origin`.
+- GitHub quality run `33261873620`: **success**.
+- GitHub desktop release run `33261874466`: **success**. Release `v0.1.4` contains macOS arm64/x64, Windows MSI/EXE, and Linux AppImage/DEB/RPM assets plus `SHA256SUMS` and `latest.json`.
+- Static deployment: main has been pushed; live validation is appended after the host updates.
 
-- Fresh live Chromium contexts at 390×844 and 1440×900.
-- One-click demo mutation, reversal, Reset, real-key sentinel, exit, request log,
-  service-worker control, and offline reload.
-- Live crawl of all routes, a missing route, and every discovered link.
-- Route metadata/structure checks and live Axe injection: zero serious/critical
-  violations.
-- Every exact claims command from a clean clone after installing the documented
-  Linux Tauri prerequisites: all exited 0.
-- Full clean-clone suites: Playwright 23/23 and Rust 13/13.
-- `npm run build:site`: PASS; main JavaScript 11,723 bytes gzip.
-- Prior handoff repair statements checked against live behavior and source.
+## Verification
 
-## Key evidence
+- Clean clone at `34a462c`: `npm ci`, then every exact command in `.factory/claims.json` completed successfully.
+- `npm test`: 29 browser tests passed locally. The GitHub fresh runner also passed this suite.
+- `cargo test --manifest-path src-tauri/Cargo.toml`: 16 native tests passed locally.
+- `cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings`: passed.
+- `cargo fmt --manifest-path src-tauri/Cargo.toml -- --check`: passed.
+- `npm run build`: passed; `dist/site` generated. Initial JavaScript gzip: 10.96 KB. CSS gzip: 4.31 KB.
+- `scripts/verify-url.sh` passed for local production `/`, `/?demo=1`, `/privacy`, and `/terms` with title, language, main, H1, alt, and console checks.
+- Playwright Axe scans are part of `npm test`; no serious or critical violations.
+- Local evidence screenshots: `.factory/evidence/polish-1-landing-mobile.png` and `.factory/evidence/polish-1-demo-mobile.png`.
 
-- Browser Back from `/privacy` returned `/` near `scrollY=4136` while focus was
-  on the off-screen landing H1.
-- After demo mutation and **Start for real**,
-  `demo:agent-change-recovery:ledger` remained.
-- Reset removed only the demo key and preserved a seeded real-data sentinel.
-- Direct live demo traffic was same-origin only and reloaded offline.
-- `local-privacy` checks folder boundaries, not network egress.
+## Packaging note
 
-## Working tree and next step
+The container has no `/dev/fuse`, so its local linuxdeploy helper cannot complete an AppImage. The workflow now installs Ubuntu 22.04’s `libfuse2` and sets `APPIMAGE_EXTRACT_AND_RUN=1`; its Linux AppImage build passed in GitHub Actions.
 
-Pre-existing modified `graphify-out` files were left untouched and are excluded
-from the review commit. Address findings in ID order, add claim coverage before
-changing claim copy, and rerun the complete review rather than a diff-only check.
+## Working tree
+
+Only pre-existing `graphify-out/` changes remain uncommitted. They were not modified or included in the repair.

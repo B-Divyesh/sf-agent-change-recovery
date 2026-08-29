@@ -54,4 +54,11 @@ Candidate repaired from `e473cfab3471e222a1131fa28fabe736ed823a66`. Local eviden
 - Browser: `npm test` — 29 passing tests, including Axe scans, keyboard dialog focus, mobile overflow/touch targets, reduced motion, offline reload, routing, metadata, installers, and every browser claim.
 - Native: `cargo test --manifest-path src-tauri/Cargo.toml` — 16 passing tests, including the bundled sample and all native claims.
 - Build: `npm run build` — static output in `dist/site`; initial JavaScript gzip is under 11 KB.
-- Native release package: `CI=true npm run tauri build -- --bundles appimage` — pending completion at time of this entry.
+- Native release package: local Linux AppImage packaging is blocked by the disposable container’s absent `/dev/fuse`; GitHub release run `33261874466` passed all macOS, Windows, and Linux builds and published v0.1.4 assets.
+
+## Evidence files
+
+- Local 390px landing: `.factory/evidence/polish-1-landing-mobile.png`.
+- Local 390px demo: `.factory/evidence/polish-1-demo-mobile.png`.
+- Release: `https://github.com/B-Divyesh/sf-agent-change-recovery/releases/tag/v0.1.4`.
+- Live static re-check: pending host refresh after the pushed `main` deployment.
