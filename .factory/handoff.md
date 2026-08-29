@@ -57,3 +57,9 @@ The desktop app deliberately does not retain a passphrase. If a user loses it, e
 ### Packaging note
 
 The local Debian package is reproducible. The local AppImage attempt reaches `linuxdeploy` with the CI environment flag (`APPIMAGE_EXTRACT_AND_RUN=1`) but exits 1 on this Ubuntu 24.04 container because its GTK plugin fails after staging the AppDir; `/dev/fuse` is also absent. The release workflow deliberately uses Ubuntu 22.04 and the existing checksum-verified v0.1.5 AppImage remains the consumer artifact. This is a runner/tooling limitation, not a desktop runtime regression.
+
+### Source and deployment
+
+- Repair commit `52efd33` (`test: isolate release lookup from console policy checks`) is pushed to `main`.
+- Deployed `dist/site` through the configured factory Azure Static Web Apps work order. Deployment `e0dba5fc-9213-46fe-95ec-6e4da3678b37` succeeded at `https://yellow-field-06248de10.7.azurestaticapps.net`; the configured custom domain `https://agent-change-recovery.sociobot.in` returned HTTPS 200.
+- Post-deployment identity check: the deployed `assets/index-Bmm9SXYy.js` SHA-256 is `e2f123ff35c7c00d80c547e5594f106e16508c057edbde5771ed86b132c7df63`, exactly matching this build. `/missing-sheet` returns HTTP 404.
