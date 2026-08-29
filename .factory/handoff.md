@@ -32,3 +32,28 @@
 ## Known limitation
 
 The desktop app deliberately does not retain a passphrase. If a user loses it, encrypted local checkpoint history cannot be opened. This is the intended privacy trade-off; users should keep normal Git history and backups.
+
+## Repair 7 — 29 August 2026
+
+### Delivered
+
+- Reproduced the controller's intermittent browser failure by fulfilling the landing page's GitHub release request with HTTP 403. Chromium emitted `Failed to load resource: the server responded with a status of 403 (Forbidden)` even though the product's fallback copy rendered.
+- Made the Playwright suite hermetic for the documented GitHub release lookup. Each regular browser context now receives a realistic local release fixture; the release/privacy tests retain route-specific fixtures. This prevents rate-limit-dependent external 403s from becoming console resource errors during unrelated quality checks.
+- Strengthened the built CSP regression: it now asserts that the release request was intercepted exactly once, the fixture result rendered, `frame-ancestors 'none'` remains response-header-only, and the console error list is empty.
+- Reconfirmed the report-7 delivery remains present: encrypted local snapshots/manifests, enforced 2/7/30/90 retention, listed claim coverage for all public safety/privacy behavior, and the $15/month Sociobot Pro restore flow.
+
+### Verification
+
+- Clean JavaScript install: `npm ci --include=dev` — passed with 0 audit vulnerabilities.
+- Exact security-policy regression: `npm test -- --grep "built security policy keeps frame ancestry"` — passed. Forced pre-fix 403 evidence was captured before the repair; the complete suite has no browser console resource error in this test.
+- Browser suite: `npm test` — **30 passed**. This includes desktop and 390px mobile layouts, keyboard/focus dialog behavior, Playwright Axe serious/critical scans, demo isolation, request privacy, service-worker offline/update behavior, and all browser claims.
+- Native suite: `cargo test --manifest-path src-tauri/Cargo.toml` — **19 passed**; `cargo fmt --manifest-path src-tauri/Cargo.toml -- --check` and `cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings` — passed.
+- Production build: `npm run build` — passed; `dist/site` contains 40.20 KB JavaScript (12.72 KB gzip) and 15.63 KB CSS (4.35 KB gzip).
+- Local desktop package: `CI=true npm run tauri build -- --bundles deb` — passed; produced `Change Recovery Ledger_0.1.5_amd64.deb` (5,517,160 bytes, SHA-256 `84c74fe62034399a942a29206ae97e7aa6bc606daa507754078af2a359b74dcc`). Extracting it as a consumer yielded an executable `/usr/bin/change-recovery-ledger`.
+- Published-consumer check: downloaded the v0.1.5 Debian asset and verified it against its published `SHA256SUMS` — passed.
+- Live production check: `scripts/verify-url.sh` passed on `/`, `/demo`, `/privacy`, and `/terms` (title, `lang`, exactly one `main`/`h1`, image alts, and no console errors). The live response has the response-header CSP with `frame-ancestors 'none'`; the hashed JS has `Cache-Control: public, max-age=31536000, immutable`.
+- Mobile Lighthouse against production: performance **99**, accessibility **100**, LCP **1,356 ms**, TBT **100 ms**, CLS **0**.
+
+### Packaging note
+
+The local Debian package is reproducible. The local AppImage attempt reaches `linuxdeploy` with the CI environment flag (`APPIMAGE_EXTRACT_AND_RUN=1`) but exits 1 on this Ubuntu 24.04 container because its GTK plugin fails after staging the AppDir; `/dev/fuse` is also absent. The release workflow deliberately uses Ubuntu 22.04 and the existing checksum-verified v0.1.5 AppImage remains the consumer artifact. This is a runner/tooling limitation, not a desktop runtime regression.

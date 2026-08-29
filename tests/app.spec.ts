@@ -5,6 +5,8 @@ import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, st
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+const releaseApiUrl = 'https://api.github.com/repos/B-Divyesh/sf-agent-change-recovery/releases/latest';
+
 test.beforeEach(async ({ context }) => {
   await context.addInitScript(() => {
     // Playwright runs init scripts on every navigation. Keep reloads realistic:
@@ -14,6 +16,15 @@ test.beforeEach(async ({ context }) => {
       sessionStorage.setItem('acr-test-storage-cleared', 'true');
     }
   });
+  // Landing pages resolve current downloads at runtime. Keep non-release tests
+  // hermetic so GitHub rate limiting cannot produce a browser resource error.
+  await context.route(releaseApiUrl, route => route.fulfill({ json: {
+    tag_name: 'v0.1.5-test',
+    assets: [{
+      name: 'Change.Recovery.Ledger_0.1.5-test_amd64.AppImage',
+      browser_download_url: 'https://example.test/Change.Recovery.Ledger_0.1.5-test_amd64.AppImage'
+    }]
+  } }));
 });
 
 test('@claim:selective-reversal reverses one selected file and keeps the others', async ({ page }) => {
@@ -174,7 +185,7 @@ test('@claim:platform-download selects exact assets for Linux, macOS, and Window
   ]) {
     const context = await browser.newContext({ userAgent });
     const page = await context.newPage();
-    await page.route('https://api.github.com/repos/B-Divyesh/sf-agent-change-recovery/releases/latest', route => route.fulfill({ json: { tag_name: 'v0.1.2', assets } }));
+    await page.route(releaseApiUrl, route => route.fulfill({ json: { tag_name: 'v0.1.2', assets } }));
     await page.goto('/');
     await expect(page.locator('#download-button')).toHaveAttribute('href', expected);
     await context.close();
@@ -184,7 +195,7 @@ test('@claim:platform-download selects exact assets for Linux, macOS, and Window
 test('@claim:release-request-privacy requests only the disclosed GitHub release API', async ({ page }) => {
   const origins = new Set<string>();
   page.on('request', request => origins.add(new URL(request.url()).origin));
-  await page.route('https://api.github.com/repos/B-Divyesh/sf-agent-change-recovery/releases/latest', route => route.fulfill({ json: { tag_name: 'v0.1.2', assets: [] } }));
+  await page.route(releaseApiUrl, route => route.fulfill({ json: { tag_name: 'v0.1.2', assets: [] } }));
   await page.goto('/');
   await expect(page.locator('#download-status')).not.toHaveText('Checking published releases…');
   expect([...origins].sort()).toEqual(['http://127.0.0.1:4173', 'https://api.github.com']);
@@ -255,13 +266,26 @@ test('reverse dialog traps focus and restores it to its trigger', async ({ page 
   await expect(trigger).toBeFocused();
 });
 
-test('built security policy keeps frame ancestry in the response header only', async ({ page }) => {
+test('built security policy keeps frame ancestry in the response header only without console resource failures', async ({ page }) => {
   const errors: string[] = [];
+  const releaseRequests: string[] = [];
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
-  await page.goto('/');
+  await page.route(releaseApiUrl, route => {
+    releaseRequests.push(route.request().url());
+    return route.fulfill({ json: {
+      tag_name: 'v0.1.5-test',
+      assets: [{
+        name: 'Change.Recovery.Ledger_0.1.5-test_amd64.AppImage',
+        browser_download_url: 'https://example.test/Change.Recovery.Ledger_0.1.5-test_amd64.AppImage'
+      }]
+    } });
+  });
+  await page.goto('/', { waitUntil: 'networkidle' });
   expect(readFileSync('index.html', 'utf8')).not.toMatch(/frame-ancestors/);
   const config = JSON.parse(readFileSync('public/staticwebapp.config.json', 'utf8')) as { globalHeaders: Record<string, string> };
   expect(config.globalHeaders['Content-Security-Policy']).toContain("frame-ancestors 'none'");
+  expect(releaseRequests).toEqual([releaseApiUrl]);
+  await expect(page.locator('#download-status')).toContainText('v0.1.5-test');
   expect(errors).toEqual([]);
 });
 
