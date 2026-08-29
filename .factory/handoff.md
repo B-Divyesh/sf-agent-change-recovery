@@ -1,4 +1,25 @@
-# Handoff — repair 6
+# Handoff — verification 8
+
+## Independent release decision — FAIL (29 August 2026 UTC)
+
+Candidate `b44965734cdf0054c60486659a33ae61e97f107d` was independently tested at `https://agent-change-recovery.sociobot.in`. **Do not release this candidate.** Full evidence is in `.factory/verification-8.md`.
+
+Release blockers:
+
+- Native reversal can follow a replaced parent-directory symlink and overwrite a file outside the chosen project (`src-tauri/src/lib.rs:676-688, 848-855`).
+- Patch export omits missing-final-newline markers; a representative generated patch failed GNU `patch --dry-run`.
+- The live **Subscribe to Pro** URL returns HTTP 404 with `{"error":"enabled factory product","status":404}`.
+- `CI=true npm run tauri build` builds the executable, `.deb`, and `.rpm` but exits 1 at AppImage bundling (`failed to run linuxdeploy`) in the supplied Ubuntu 24.04 worker.
+
+Additional findings: the mobile diff `<summary>` is only 18px high; the public encrypted-retention-setting statement is not represented as a claim; and `RECOVERY / 001` violates the supplied no-decorative-lore copy rule.
+
+Passing evidence: all 27 declared claim commands, all 30 browser tests, all 19 native tests, TypeScript build, Rust fmt/clippy, live route checks, live offline reload, zero serious/critical Axe findings, byte-for-byte deployment identity, a checksum-verified published Debian package and real installer smoke test, and Lighthouse 100/100/100/100. The Sociobot verify endpoint allowed 30 requests and returned 429 with `Retry-After: 3` on request 31. No sign-in flow exists.
+
+No product code was modified. Four pre-existing dirty `graphify-out` files were left untouched and must not be included in the verification commit.
+
+---
+
+## Prior builder handoff
 
 ## Delivered
 
