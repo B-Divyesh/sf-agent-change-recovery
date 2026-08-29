@@ -1,43 +1,52 @@
-# Handoff — repair verification 8
+# Handoff — independent verification 9
 
-## Delivered
+## Result
 
-Repair source commit: `8306be7` (`fix: close verification-8 release blockers`).
+**FAIL — do not release or promote candidate `97eb3eed0b7df4bc38010f515f5b0bf451bae4bf`.**
 
-- Native selective reversal now rejects symlinked destination components before it records a safety checkpoint and uses descriptor-relative, no-follow file operations on Unix while restoring or deleting selected files. The exact reproduced case is retained as `reversal_rejects_replaced_symlink_parent_outside_project`.
-- Patch export preserves missing-final-newline state with standard `\\ No newline at end of file` markers. It now checks every selected file and gives a clear error for binary content instead of silently omitting it. The regression test runs GNU `patch --dry-run` against both normal and no-final-newline fixtures.
-- The mobile selected-diff `<summary>` is a 44px minimum target and is covered at a 390px viewport.
-- The privacy/README retention-encryption statement is registered as `retention-settings-encryption` with a native encrypted-storage and reopen regression test.
-- Removed the `RECOVERY / 001` decorative label. The risograph visual direction remains intact.
-- AppImage packaging now installs `file`, clears only generated AppImage staging on Linux, verifies AppImage/deb/rpm outputs in CI, and prepares a checksum-pinned GTK helper whose module links are idempotent. The app/site release is `0.1.6`; the service-worker cache is `recovery-ledger-v6`.
+Verified on 29 August 2026 against `https://agent-change-recovery.sociobot.in`. Product code was not modified. Full evidence is in `.factory/verification-9.md`.
 
-## Verification
+## Release blockers
 
-- Exact pre-repair reproduction on `b44965734cdf0054c60486659a33ae61e97f107d`: `cargo test --manifest-path src-tauri/Cargo.toml reversal_rejects_replaced_symlink_parent_outside_project -- --nocapture` failed because the outside sentinel was modified. The same command now passes.
-- Clean install: `npm ci` passed with 0 audit vulnerabilities.
-- Browser integration: `npm test` passed, **32 tests**. It includes desktop and 390px mobile layout, keyboard dialog focus, Playwright Axe serious/critical checks, demo isolation, privacy request policy, service-worker offline/update behavior, release lookup fallback, and console policy checks.
-- Native: `cargo test --manifest-path src-tauri/Cargo.toml` passed; `cargo fmt --manifest-path src-tauri/Cargo.toml -- --check` and `cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --all-features -- -D warnings` passed.
-- Claims: all **28** commands from `.factory/claims.json` passed from the clean install, including `patch-export`, `chosen-folder-only`, and `retention-settings-encryption`.
-- Static production build: `npm run build` passed. It emits 40.20 KB JavaScript (12.72 KB gzip) and 15.58 KB CSS (4.32 KB gzip) in `dist/site`.
-- Local URL verification: `/opt/fleet/lib/verify-url.sh http://127.0.0.1:4173` passed with title, `lang=en`, one H1, one main, image alts, no unlabeled buttons, and no console errors.
-- Desktop package: `CI=true npm run tauri build` passed and emitted the Debian package, RPM, and `Change Recovery Ledger_0.1.6_amd64.AppImage`. Debian extraction exposed an executable `/usr/bin/change-recovery-ledger`; RPM metadata reports version `0.1.6`; the AppImage is a valid ELF AppImage with offset `944632`.
+1. The visible `$15/developer/month` **Subscribe to Pro** action is unavailable. Production and pilot Sociobot checkout URLs both return HTTP 404 with `{"error":"enabled factory product","status":404}`.
+2. The live download selector sends an Intel macOS user agent to `Change.Recovery.Ledger_0.1.6_aarch64.dmg` even though the release includes a separate x64 DMG.
 
-## Checkout registration boundary
+## Other defect
 
-The application and native verifier use the required production mapping:
-`https://api.sociobot.in/api/v1/products/agent-change-recovery/checkout`.
+- At 390px, the focused **Skip to main content** link is 224×42 CSS px, 2px below the required 44px target height.
 
-On 29 August 2026, both that production URL and the matching pilot URL returned `404 {"error":"enabled factory product","status":404}`. The public product catalog contains no `agent-change-recovery` entry, and this worker has no product-registration credential or supported registration tool. No unrelated product checkout was substituted. The factory billing owner must register/enable the `agent-change-recovery` $15/developer/month product; then recheck that URL returns the hosted checkout before announcing Pro sales.
+## What passed
 
-## Deployment and release
+- Cold first-read and one-click populated demo.
+- All 28 declared claim tests after clean dependency/prerequisite installation.
+- `npm test` (32), `cargo test` (21), TypeScript production build, Rust fmt/clippy, and npm audit.
+- Fully provisioned `CI=true npm run tauri -- build`; Debian, RPM, and AppImage were produced.
+- Actual published AppImage install, launch, bundled sample load, selective two-of-four reversal, and safety checkpoint.
+- Valid unified patch dry-run, encrypted storage/passphrase non-persistence checks, demo isolation, offline reload/service-worker update, keyboard dialog focus, 200% text, mobile layout, and reduced motion.
+- Live Axe scans: zero serious/critical findings. Valid routes: no console/page errors.
+- Privacy request log: same-origin demo only; disclosed GitHub release lookup and Sociobot license verification only.
+- License verification rate limit: requests 1–30 returned 200; request 31 returned 429 with `Retry-After: 3`.
+- Mobile Lighthouse: 100 performance, 100 accessibility, 100 best practices, 100 SEO; LCP 1,354 ms; CLS 0.
+- Live static bytes match the candidate build. v0.1.6 release assets and Debian checksum were verified.
 
-- Pushed `e86c6f11117ba6fa86459cb374cddc1a4c77116f` to `main` and pushed tag `v0.1.6`. The GitHub quality-gates run [33274866080](https://github.com/B-Divyesh/sf-agent-change-recovery/actions/runs/33274866080) and cross-platform release run [33274870954](https://github.com/B-Divyesh/sf-agent-change-recovery/actions/runs/33274870954) both completed successfully.
-- Static deployment `851fd7be-6759-4492-9ae0-5ded7ef54476` succeeded to the configured Azure Static Web App and is live at `https://agent-change-recovery.sociobot.in` (Azure host `https://yellow-field-06248de10.7.azurestaticapps.net`). The live `index-Cgdz7A35.js` SHA-256 is `7a0908668feaacfcde5bca84480bb1370cccce5d33e8529a2a9cf9fe70d67698`, exactly matching `dist/site`.
-- Live URL checks passed for `/`, `/demo`, `/privacy`, and `/terms`; `/missing-sheet` returns 404. The deployed CSP has `frame-ancestors 'none'` as a response header, and the live desktop/mobile verifier reported no console errors.
-- Mobile Lighthouse: performance **99**, accessibility **100**, LCP **2,106 ms**, CLS **0**.
-- [Change Recovery Ledger v0.1.6](https://github.com/B-Divyesh/sf-agent-change-recovery/releases/tag/v0.1.6) contains macOS arm64/x64 DMGs, Windows MSI/EXE, Linux DEB/RPM/AppImage, `SHA256SUMS`, and `latest.json`. The published Debian asset verified against `SHA256SUMS`; its published SHA-256 is `6f63692ca6a9917c40aea040b73c9b55f011cacb914039d0721d36b791d76eaf`. The published AppImage SHA-256 is `2586b5f1f6d31d67736370c8dc81069861b3f477aad6ec4ede356d1da57c918d`.
-- Live download resolution on Linux points to the v0.1.6 AppImage with no browser console errors.
+## Reproduce
 
-## Operator action
+```sh
+npm ci
+npm test
+npm run build
+cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+cargo test --manifest-path src-tauri/Cargo.toml
+CI=true npm run tauri -- build
+bash scripts/verify-url.sh https://agent-change-recovery.sociobot.in
+```
 
-Desktop artifacts remain unsigned. A signed macOS release needs the Apple certificate/notarization configuration, and Windows needs an Authenticode PFX. No signing material is stored in this repository.
+Linux desktop packaging requires the libraries and tools declared in `.github/workflows/release.yml`, including `file` and `libfuse2`.
+
+## Next actions
+
+- Factory billing owner: register and enable the production `agent-change-recovery` checkout, then test a real hosted checkout redirect.
+- Product owner: expose both macOS architectures instead of selecting the first DMG.
+- Product owner: increase the skip-link target to 44px and extend the touch-target regression.
+- Re-run verification after the live checkout and repaired download selector are deployed.
