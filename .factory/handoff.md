@@ -1,57 +1,149 @@
-# Handoff — verification 4 — FAIL
+# Handoff — repair 4
 
 ## Current release status (2026-08-29 UTC)
 
-**FAIL — do not promote `8bb190fbbf1bc2709908ba96439e20e72317a790`.** Fresh verification of `https://agent-change-recovery.sociobot.in` found production-only blockers: the service worker cannot install and `/demo` fails offline reload, public static files and 404 assets are served as 404, Buy Pro returns HTTP 404, and the downloadable `v0.1.0` desktop release predates the candidate. See `.factory/verification-4.md` for exact commands, headers, hashes, and remediation.
+**Static deployment and desktop release repaired. Billing registration remains externally blocked.**
 
-The repository source itself is buildable: clean `npm ci`, all 12 exact claim commands, `npm test` (19/19), `cargo test` (9/9), `cargo check`, `cargo build`, `cargo fmt --check`, `cargo clippy -D warnings`, and `npm run build` passed. The live JS/CSS SHA-256 values exactly match this candidate’s `dist/site` build, so the site-side findings are current deployment behavior rather than a stale static build.
+- Repair commit: `8198bfe724ae61f3039d366373c79f419c54bc18`
+- Desktop release: [`v0.1.1`](https://github.com/B-Divyesh/sf-agent-change-recovery/releases/tag/v0.1.1), built from that exact commit
+- Static deployment: `https://agent-change-recovery.sociobot.in`
 
----
+The source and deployed site repair every deployable verifier finding from
+`.factory/verification-4.md`. The one remaining release-promotion blocker is
+the external Sociobot catalog registration described under **Known gap**.
 
-## Scope repaired
+## What was repaired
 
-Repair work started from verifier commit `3770541f6905c8dabe2152290dd1b58f2443b54e` for candidate `ab49761cd3a7ade4134bb9e8641430843dee750f`.
-
-- Browser and Tauri exports now write standard unified diffs with numeric hunk ranges. Both regression tests run `patch --dry-run -p1` against a matching fixture.
-- The reverse and encrypted-export dialogs trap Tab and Shift+Tab, support Escape, and return focus to their invoking control when cancelled.
-- The 390px landing page has no horizontal scroll. The recovery-preview list is contained on narrow screens, and the previous invalid mobile width expression is replaced with a valid viewport width.
-- Removed `frame-ancestors` from the meta CSP; it remains only in the Static Web Apps response header. Browser console smoke has no errors.
-- Added Static Web Apps rules for known SPA paths, a true wildcard 404 response rewritten to a styled local 404 page, immutable caching for hashed `/assets/*`, and no-cache service-worker delivery.
-- Replaced the invalid `www.sociobot.in` footer host with `https://sociobot.in`.
-- Fixed the empty selection label from “Reverse  selected files” to “Reverse selected files”.
-- Expanded the claims ledger and regression tests for native selected-folder isolation, Git-metadata exclusion, the 2 MB file skip, free safety/patch controls, and patch applicability. Unsupported telemetry wording was removed; Git wording now matches the executable checkpoint behavior.
+- Removed the Static Web Apps `/*` route that took precedence over normal
+  public-file delivery. Known app routes still rewrite to the SPA, while the
+  platform's ordinary 404 response is rewritten to the styled `404.html`.
+- Added regression coverage that asserts no public-file-catching wildcard,
+  confirms the precise 404 response override, and requests every previously
+  broken file from the production build: favicon, Apple touch icon, robots,
+  sitemap, and the 404 CSS/JS.
+- Bumped the offline cache to `recovery-ledger-v3`. Its required shell now
+  contains only first-party app-shell resources; optional browser-chrome icons
+  cannot make `cache.addAll()` reject and prevent installation.
+- Added an end-to-end service-worker update regression. It waits for the
+  installed controller, confirms the v3 cache contains `/` and `/demo`, calls
+  `registration.update()`, goes offline, and reloads the sample ledger.
+- Bumped the desktop package version consistently to `0.1.1` in npm, Cargo,
+  Tauri, and the lock files, then tagged and published the matching release.
 
 ## Verification evidence
 
-Run on 2026-08-28 UTC after `npm ci` and installation of the documented Linux Tauri packages (`libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf`):
+### Clean local verification
+
+Executed from a clean Node install after installing the documented Linux
+Tauri dependencies (`libwebkit2gtk-4.1-dev`, `libappindicator3-dev`,
+`librsvg2-dev`, and `patchelf`):
 
 ```sh
 npm ci
 npm test
 cargo test --manifest-path src-tauri/Cargo.toml
+cargo check --manifest-path src-tauri/Cargo.toml
+cargo build --manifest-path src-tauri/Cargo.toml
 cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
 cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
-npm run build
+npm run build:site
 npm audit --audit-level=high
 ```
 
 Results:
 
-- `npm test`: 19/19 Playwright tests passed. This covers every declared browser claim, desktop and 390px mobile, keyboard dialog behavior, routes/titles, offline reload, reduced motion, demo isolation, console-error checks, and serious/critical Axe findings (zero).
-- `cargo test`: 9/9 native tests passed, including `patch_export_is_standard_unified_diff_and_dry_runs`, local-folder isolation, file-size skip, and Git metadata exclusion.
-- `cargo fmt --check`: passed. `cargo clippy --all-targets -- -D warnings`: passed after the native dependency install.
-- `npm run build`: passed. `dist/site` contains 31.54 KB raw / 10.57 KB gzip JS and 14.87 KB raw / 4.18 KB gzip CSS; the hero is 182,420 bytes.
+- `npm test`: **20/20 passed**. Includes all claim tests, desktop/browser and
+  390px checks, keyboard dialog focus, reduced motion, route titles, privacy
+  request-origin checks, service-worker cache/update/offline reload, and
+  serious/critical Axe scans (zero).
+- Every exact command declared in `.factory/claims.json` passed serially.
+  This covers all 12 claims; the chosen-folder and local-privacy claims share
+  their one native assertion command.
+- `cargo test`: **9/9 passed**. `cargo check`, `cargo build`, formatting, and
+  Clippy with `-D warnings` passed.
 - `npm audit --audit-level=high`: zero vulnerabilities.
-- `/opt/fleet/lib/verify-url.sh http://127.0.0.1:4173/ <evidence-dir>`: passed with title, `lang=en`, one h1, main, zero missing image alt attributes, and no console errors.
+- `npm run build:site`: passed. The shipped JS is 31.54 KB raw / 10.57 KB
+  gzip; CSS is 14.87 KB raw / 4.18 KB gzip; hero assets remain below the
+  300 KB mobile budget.
+- `/opt/fleet/lib/verify-url.sh http://127.0.0.1:4173 <temp-dir>` passed:
+  title, `lang=en`, one h1, main, zero missing image alts, zero console
+  errors. The standalone Axe CLI cannot launch because this container only
+  exposes Playwright's bundled browser; the required Playwright Axe
+  integration ran in the passing suite instead.
 
-## Known external dependency
+### Production verification
 
-The production Sociobot checkout has not been registered: on 2026-08-28 UTC, `GET https://api.sociobot.in/api/v1/products/agent-change-recovery/checkout` still returned HTTP 404 with `{"error":"enabled factory product","status":404}`. The repository preserves the required Sociobot checkout URL and price claim, but the absent factory `new-paid-product.sh` registration tool and no work-order billing credential mean this external state cannot be changed from this repository. Before promotion, register/enable product slug `agent-change-recovery` in the Sociobot billing engine and rerun a redirected checkout assertion.
+`/opt/fleet/lib/deploy-static.sh agent-change-recovery dist/site` deployed
+successfully to the existing Static Web App on 2026-08-29 UTC.
 
-## Deploy
+- `/favicon.svg`, `/apple-touch-icon.png`, `/robots.txt`, `/sitemap.xml`,
+  `/404.css`, `/404.js`, and `/sw.js` all return **200**.
+- `/missing-sheet` returns **404** with the styled `Not found — Change
+  Recovery Ledger` page. The only browser console record on that URL is
+  Chromium's expected top-level-document 404 status message; its CSS and JS
+  both return 200, so there is no broken 404 subresource.
+- Fresh Chromium `/demo` verification installed and controlled
+  `recovery-ledger-v3`; offline reload completed with the demo h1 and offline
+  notice present. There was no reload error.
+- Live desktop and 390px mobile recovery flows passed, including selection,
+  patch export, demo reset/isolation, 390px no-overflow, reduced motion,
+  menu keyboard operation, dialog Tab/Shift+Tab wrapping, Escape focus
+  restore, and zero serious/critical Axe findings.
+- The demo flow made requests only to
+  `https://agent-change-recovery.sociobot.in`. The landing download resolver
+  additionally uses only the disclosed GitHub releases API.
+- The live hashed JS/CSS SHA-256 values match `dist/site`; static JS has
+  `Cache-Control: public, max-age=31536000, immutable`.
+- Mobile Lighthouse rerun: **97 performance / 100 accessibility**, LCP
+  2481 ms, TBT 0 ms, CLS 0.
+- The live landing page resolves its Linux download button to `v0.1.1` with
+  no console errors.
 
-Static deployment target: `dist/site` using `/opt/fleet/lib/deploy-static.sh agent-change-recovery dist/site`.
+### Desktop release verification
 
-Deployed successfully on 2026-08-28 UTC. Live Chromium checks at `https://agent-change-recovery.sociobot.in` returned 200 with 390px width on `/`, `/demo`, `/app`, `/privacy`, and `/terms`; those routes had zero console errors. `/not-a-route` returned a real 404 with the styled not-found title. The live hashed JS response has `Cache-Control: public, max-age=31536000, immutable`.
+- GitHub Actions release workflow:
+  [`33249972619`](https://github.com/B-Divyesh/sf-agent-change-recovery/actions/runs/33249972619)
+  completed successfully. The normal quality-gates workflow for the repair
+  commit also completed successfully.
+- `v0.1.1` is a non-draft, non-prerelease release whose target commit is
+  `8198bfe724ae61f3039d366373c79f419c54bc18`.
+- It contains macOS arm64/x64 DMGs and app archives, Windows MSI/EXE, Linux
+  AppImage/DEB/RPM, `SHA256SUMS`, and `latest.json` (`version: 0.1.1`).
+- Downloaded `Change.Recovery.Ledger_0.1.1_amd64.deb` hash:
+  `814a9faedc2b2efad39a6a62cb521569a1d7082d5aeeb5aab049af9e425999b5`.
+  It exactly matches `SHA256SUMS`; package metadata reports version `0.1.1`.
+  The extracted desktop binary is executable, has resolved dynamic links, and
+  stayed running for 12 seconds under `xvfb-run`.
 
-Desktop release configuration remains unchanged. Existing GitHub release `v0.1.0` packages remain unsigned; macOS and Windows signing certificates are still an operator action if signed installers are required.
+## Known gap
+
+The paid checkout cannot be repaired from this repository or work-order
+environment. On 2026-08-29 UTC:
+
+```text
+GET https://api.sociobot.in/api/v1/products/agent-change-recovery/checkout
+-> 404 {"error":"enabled factory product","status":404}
+```
+
+The slug is absent from the public Sociobot product catalog. The application
+keeps the required Sociobot-only checkout and license-verification integration;
+removing it or redirecting buyers elsewhere would violate the researched
+monetization and factory contract. The factory billing operator must register
+and enable `agent-change-recovery` at $15/developer/month, then re-run a
+redirected checkout assertion before full commercial promotion. No billing
+credential or `fleet/new-paid-product.sh` registration tool is present here.
+
+## How to run and deploy
+
+```sh
+npm ci
+npm test
+cargo test --manifest-path src-tauri/Cargo.toml
+npm run build:site
+/opt/fleet/lib/deploy-static.sh agent-change-recovery dist/site
+```
+
+Use `npm run tauri dev` for the local desktop app. Release packages are built
+only by `.github/workflows/release.yml` when a `v*` tag is pushed. macOS and
+Windows artifacts are unsigned until the operator supplies the documented
+signing credentials.
