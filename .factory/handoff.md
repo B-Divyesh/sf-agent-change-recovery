@@ -31,7 +31,12 @@ On 29 August 2026, both that production URL and the matching pilot URL returned 
 
 ## Deployment and release
 
-The source is ready for push, static deployment to `dist/site`, and the `v0.1.6` desktop release workflow. Update this section with the pushed commit, deployment identity, and release assets after those operations complete.
+- Pushed `e86c6f11117ba6fa86459cb374cddc1a4c77116f` to `main` and pushed tag `v0.1.6`. The GitHub quality-gates run [33274866080](https://github.com/B-Divyesh/sf-agent-change-recovery/actions/runs/33274866080) and cross-platform release run [33274870954](https://github.com/B-Divyesh/sf-agent-change-recovery/actions/runs/33274870954) both completed successfully.
+- Static deployment `851fd7be-6759-4492-9ae0-5ded7ef54476` succeeded to the configured Azure Static Web App and is live at `https://agent-change-recovery.sociobot.in` (Azure host `https://yellow-field-06248de10.7.azurestaticapps.net`). The live `index-Cgdz7A35.js` SHA-256 is `7a0908668feaacfcde5bca84480bb1370cccce5d33e8529a2a9cf9fe70d67698`, exactly matching `dist/site`.
+- Live URL checks passed for `/`, `/demo`, `/privacy`, and `/terms`; `/missing-sheet` returns 404. The deployed CSP has `frame-ancestors 'none'` as a response header, and the live desktop/mobile verifier reported no console errors.
+- Mobile Lighthouse: performance **99**, accessibility **100**, LCP **2,106 ms**, CLS **0**.
+- [Change Recovery Ledger v0.1.6](https://github.com/B-Divyesh/sf-agent-change-recovery/releases/tag/v0.1.6) contains macOS arm64/x64 DMGs, Windows MSI/EXE, Linux DEB/RPM/AppImage, `SHA256SUMS`, and `latest.json`. The published Debian asset verified against `SHA256SUMS`; its published SHA-256 is `6f63692ca6a9917c40aea040b73c9b55f011cacb914039d0721d36b791d76eaf`. The published AppImage SHA-256 is `2586b5f1f6d31d67736370c8dc81069861b3f477aad6ec4ede356d1da57c918d`.
+- Live download resolution on Linux points to the v0.1.6 AppImage with no browser console errors.
 
 ## Operator action
 
