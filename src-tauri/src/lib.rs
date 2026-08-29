@@ -17,6 +17,7 @@ use walkdir::{DirEntry, WalkDir};
 
 const MAX_FILE_BYTES: u64 = 2 * 1024 * 1024;
 const MAX_FILES: usize = 8_000;
+const MAX_RECOVERY_BYTES: u64 = 32 * 1024 * 1024;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -52,6 +53,21 @@ fn now_id() -> String {
         .unwrap_or_default()
         .as_millis()
         .to_string()
+}
+
+fn checkpoint_id(project_store: &Path) -> Result<String, String> {
+    let base = now_id();
+    for suffix in 0..10_000 {
+        let id = if suffix == 0 {
+            base.clone()
+        } else {
+            format!("{base}-{suffix}")
+        };
+        if !project_store.join(&id).exists() {
+            return Ok(id);
+        }
+    }
+    Err("Could not allocate a unique checkpoint identifier.".into())
 }
 
 fn clock_label() -> String {
@@ -235,6 +251,7 @@ fn write_checkpoint(
     intent: String,
     commands: Vec<String>,
     safety: bool,
+    files_override: Option<Vec<FileChange>>,
 ) -> Result<Vec<Checkpoint>, String> {
     let current = read_project(project_path)?;
     let dirs = checkpoint_dirs(project_store)?;
@@ -243,8 +260,8 @@ fn write_checkpoint(
         .map(|dir| load_snapshot(dir))
         .transpose()?
         .unwrap_or_default();
-    let changes = changes_between(&previous, &current);
-    let id = now_id();
+    let changes = files_override.unwrap_or_else(|| changes_between(&previous, &current));
+    let id = checkpoint_id(project_store)?;
     let checkpoint_dir = project_store.join(&id);
     fs::create_dir_all(&checkpoint_dir).map_err(|error| error.to_string())?;
     save_snapshot(&current, &checkpoint_dir)?;
@@ -311,7 +328,7 @@ fn capture_checkpoint(
                 .into(),
         );
     }
-    write_checkpoint(&project_path, &store, intent, commands, false)?;
+    write_checkpoint(&project_path, &store, intent, commands, false, None)?;
     if pro && retention > 0 {
         let dirs = checkpoint_dirs(&store)?;
         let remove_count = dirs.len().saturating_sub(retention);
@@ -335,25 +352,64 @@ fn restore_files(
         .app_local_data_dir()
         .map_err(|error| error.to_string())?;
     let store = base.join("ledgers").join(project_key(&project_path));
-    let dirs = checkpoint_dirs(&store)?;
+    restore_files_in_store(&project_path, &store, &checkpoint_id, &files)
+}
+
+fn restore_files_in_store(
+    project_path: &Path,
+    store: &Path,
+    checkpoint_id: &str,
+    files: &[String],
+) -> Result<Vec<Checkpoint>, String> {
+    if files.is_empty() {
+        return Err("Select at least one file to reverse.".into());
+    }
+    let dirs = checkpoint_dirs(store)?;
     let index = dirs
         .iter()
-        .position(|dir| dir.file_name().and_then(|name| name.to_str()) == Some(&checkpoint_id))
+        .position(|dir| dir.file_name().and_then(|name| name.to_str()) == Some(checkpoint_id))
         .ok_or("The selected checkpoint no longer exists.")?;
     if index == 0 {
         return Err("The first checkpoint has no earlier state to restore.".into());
     }
+    let source_manifest = read_manifest(&dirs[index])?;
+    let mut safety_files = Vec::with_capacity(files.len());
+    for relative in files {
+        safe_relative(relative)?;
+        let change = source_manifest
+            .files
+            .iter()
+            .find(|change| change.path == *relative)
+            .cloned()
+            .ok_or_else(|| format!("{relative} is not selectable in this checkpoint."))?;
+        if !safety_files
+            .iter()
+            .any(|saved: &FileChange| saved.path == change.path)
+        {
+            safety_files.push(FileChange {
+                restored: false,
+                ..change
+            });
+        }
+    }
     write_checkpoint(
-        &project_path,
-        &store,
+        project_path,
+        store,
         "Safety checkpoint before reversal".into(),
         vec!["No commands run".into()],
         true,
+        Some(safety_files),
     )?;
-    let previous = load_snapshot(&dirs[index - 1])?;
-    for relative in &files {
+    // A safety checkpoint stores the exact pre-reversal bytes. Selecting it must
+    // restore that snapshot, rather than merely replaying its earlier neighbour.
+    let restore_from = if source_manifest.safety {
+        load_snapshot(&dirs[index])?
+    } else {
+        load_snapshot(&dirs[index - 1])?
+    };
+    for relative in files {
         let target = project_path.join(safe_relative(relative)?);
-        if let Some(content) = previous.get(relative) {
+        if let Some(content) = restore_from.get(relative) {
             if let Some(parent) = target.parent() {
                 fs::create_dir_all(parent).map_err(|error| error.to_string())?;
             }
@@ -364,7 +420,26 @@ fn restore_files(
                 .map_err(|error| format!("Could not remove {relative}: {error}"))?;
         }
     }
-    list_manifests(&store)
+    list_manifests(store)
+}
+
+fn delete_ledger_store(store: &Path) -> Result<(), String> {
+    if store.exists() {
+        fs::remove_dir_all(store).map_err(|error| error.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn delete_ledger(app: tauri::AppHandle, path: String) -> Result<(), String> {
+    let project_path = fs::canonicalize(Path::new(&path)).map_err(|_| {
+        "The project folder was not found. Check the full path and try again.".to_string()
+    })?;
+    let base = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|error| error.to_string())?;
+    delete_ledger_store(&base.join("ledgers").join(project_key(&project_path)))
 }
 
 #[tauri::command]
@@ -485,6 +560,28 @@ fn encrypt_bytes(content: &[u8], passphrase: &str) -> Result<Vec<u8>, String> {
     Ok(output)
 }
 
+fn decrypt_bytes(content: &[u8], passphrase: &str) -> Result<Vec<u8>, String> {
+    const HEADER_BYTES: usize = 4 + 16 + 12;
+    const AUTH_TAG_BYTES: usize = 16;
+    if content.len() < HEADER_BYTES + AUTH_TAG_BYTES || &content[..4] != b"CRL1" {
+        return Err("This is not a supported Change Recovery Ledger recovery file.".into());
+    }
+    if passphrase.chars().count() < 12 {
+        return Err("Use the recovery passphrase with at least 12 characters.".into());
+    }
+    let salt = &content[4..20];
+    let nonce = &content[20..32];
+    let encrypted = &content[HEADER_BYTES..];
+    let mut key = [0_u8; 32];
+    Argon2::default()
+        .hash_password_into(passphrase.as_bytes(), salt, &mut key)
+        .map_err(|error| error.to_string())?;
+    let cipher = Aes256Gcm::new_from_slice(&key).map_err(|error| error.to_string())?;
+    cipher
+        .decrypt(Nonce::from_slice(nonce), encrypted)
+        .map_err(|_| "The recovery file could not be opened. Check the passphrase.".to_string())
+}
+
 #[tauri::command]
 fn export_encrypted(
     app: tauri::AppHandle,
@@ -521,6 +618,40 @@ fn export_encrypted(
     Ok(target.to_string_lossy().into_owned())
 }
 
+#[tauri::command]
+fn import_encrypted_recovery(
+    app: tauri::AppHandle,
+    recovery_path: String,
+    passphrase: String,
+) -> Result<String, String> {
+    let source = fs::canonicalize(Path::new(&recovery_path)).map_err(|_| {
+        "The encrypted recovery file was not found. Check its full path and try again.".to_string()
+    })?;
+    let metadata = fs::metadata(&source).map_err(|error| error.to_string())?;
+    if !metadata.is_file() {
+        return Err("Choose an encrypted recovery file, not a folder.".into());
+    }
+    if metadata.len() > MAX_RECOVERY_BYTES {
+        return Err("This encrypted recovery file is too large to open safely.".into());
+    }
+    let patch = decrypt_bytes(
+        &fs::read(&source).map_err(|error| error.to_string())?,
+        &passphrase,
+    )?;
+    if !patch.is_empty() && !patch.starts_with(b"diff --git ") {
+        return Err("The encrypted recovery does not contain a supported patch.".into());
+    }
+    let base = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|error| error.to_string())?;
+    let export_dir = base.join("exports");
+    fs::create_dir_all(&export_dir).map_err(|error| error.to_string())?;
+    let target = export_dir.join(format!("recovery-import-{}.patch", now_id()));
+    fs::write(&target, patch).map_err(|error| error.to_string())?;
+    Ok(target.to_string_lossy().into_owned())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -528,7 +659,9 @@ pub fn run() {
             capture_checkpoint,
             restore_files,
             export_patch,
-            export_encrypted
+            export_encrypted,
+            import_encrypted_recovery,
+            delete_ledger
         ])
         .run(tauri::generate_context!())
         .expect("error while running Change Recovery Ledger");
@@ -576,17 +709,34 @@ mod tests {
     }
 
     #[test]
-    fn free_history_stops_after_seven_checkpoints() {
+    // @claim:free-history-limit
+    fn claim_free_history_limit() {
         assert!(!free_limit_reached(6, false));
         assert!(free_limit_reached(7, false));
         assert!(!free_limit_reached(7, true));
     }
 
     #[test]
-    fn encrypted_export_has_versioned_header_and_hides_plaintext() {
-        let output = encrypt_bytes(b"diff --git secret", "correct horse battery staple").unwrap();
+    // @claim:encrypted-export
+    fn claim_encrypted_export() {
+        let patch =
+            b"diff --git a/secret.txt b/secret.txt\n--- a/secret.txt\n+++ b/secret.txt\n+secret\n";
+        let output = encrypt_bytes(patch, "correct horse battery staple").unwrap();
         assert_eq!(&output[..4], b"CRL1");
         assert!(!output.windows(6).any(|window| window == b"secret"));
+    }
+
+    #[test]
+    // @claim:encrypted-import
+    fn claim_encrypted_import_opens_a_patch_without_running_it() {
+        let patch =
+            b"diff --git a/secret.txt b/secret.txt\n--- a/secret.txt\n+++ b/secret.txt\n+secret\n";
+        let output = encrypt_bytes(patch, "correct horse battery staple").unwrap();
+        assert_eq!(
+            decrypt_bytes(&output, "correct horse battery staple").unwrap(),
+            patch
+        );
+        assert!(decrypt_bytes(&output, "wrong passphrase").is_err());
     }
 
     #[test]
@@ -629,7 +779,8 @@ mod tests {
     }
 
     #[test]
-    fn project_files_stay_within_the_chosen_folder() {
+    // @claim:local-privacy
+    fn claim_local_privacy() {
         let root = tempfile::tempdir().unwrap();
         let chosen = root.path().join("chosen");
         fs::create_dir_all(&chosen).unwrap();
@@ -641,7 +792,21 @@ mod tests {
     }
 
     #[test]
-    fn skips_files_larger_than_two_megabytes() {
+    // @claim:chosen-folder-only
+    fn claim_chosen_folder_only() {
+        let root = tempfile::tempdir().unwrap();
+        let chosen = root.path().join("chosen");
+        fs::create_dir_all(&chosen).unwrap();
+        fs::write(chosen.join("inside.txt"), "keep").unwrap();
+        fs::write(root.path().join("outside.txt"), "do not read").unwrap();
+        let files = read_project(&chosen).unwrap();
+        assert_eq!(files.len(), 1);
+        assert!(files.contains_key("inside.txt"));
+    }
+
+    #[test]
+    // @claim:large-file-skip
+    fn claim_large_file_skip() {
         let root = tempfile::tempdir().unwrap();
         fs::write(root.path().join("small.txt"), "record").unwrap();
         fs::write(
@@ -655,7 +820,8 @@ mod tests {
     }
 
     #[test]
-    fn excludes_git_metadata_from_checkpoints() {
+    // @claim:git-metadata-exclusion
+    fn claim_git_metadata_exclusion() {
         let root = tempfile::tempdir().unwrap();
         fs::create_dir_all(root.path().join(".git")).unwrap();
         fs::write(root.path().join(".git/HEAD"), "ref: refs/heads/main").unwrap();
@@ -663,5 +829,90 @@ mod tests {
         let files = read_project(root.path()).unwrap();
         assert!(files.contains_key("tracked.txt"));
         assert!(!files.keys().any(|path| path.starts_with(".git/")));
+    }
+
+    #[test]
+    // @claim:reversible-safety-checkpoint
+    fn claim_reversible_safety_checkpoint() {
+        let root = tempfile::tempdir().unwrap();
+        let project = root.path().join("project");
+        let store = root.path().join("ledger");
+        fs::create_dir_all(&project).unwrap();
+        fs::write(project.join("alpha.txt"), "baseline alpha\n").unwrap();
+        fs::write(project.join("keep.txt"), "keep baseline\n").unwrap();
+        write_checkpoint(
+            &project,
+            &store,
+            "Baseline before agent".into(),
+            vec![],
+            false,
+            None,
+        )
+        .unwrap();
+        fs::write(project.join("alpha.txt"), "wrong alpha\n").unwrap();
+        fs::write(project.join("keep.txt"), "unrelated keep edit\n").unwrap();
+        let captured = write_checkpoint(
+            &project,
+            &store,
+            "Agent changed both files".into(),
+            vec![],
+            false,
+            None,
+        )
+        .unwrap();
+        let changed = captured.last().unwrap().clone();
+        let restored =
+            restore_files_in_store(&project, &store, &changed.id, &["alpha.txt".into()]).unwrap();
+        assert_eq!(
+            fs::read_to_string(project.join("alpha.txt")).unwrap(),
+            "baseline alpha\n"
+        );
+        assert_eq!(
+            fs::read_to_string(project.join("keep.txt")).unwrap(),
+            "unrelated keep edit\n"
+        );
+        let safety = restored.last().unwrap().clone();
+        assert!(safety.safety);
+        assert_eq!(
+            safety
+                .files
+                .iter()
+                .map(|file| file.path.as_str())
+                .collect::<Vec<_>>(),
+            vec!["alpha.txt"]
+        );
+        assert_eq!(
+            load_snapshot(&store.join(&safety.id))
+                .unwrap()
+                .get("alpha.txt"),
+            Some(&b"wrong alpha\n".to_vec())
+        );
+        restore_files_in_store(&project, &store, &safety.id, &["alpha.txt".into()]).unwrap();
+        assert_eq!(
+            fs::read_to_string(project.join("alpha.txt")).unwrap(),
+            "wrong alpha\n"
+        );
+        assert_eq!(
+            fs::read_to_string(project.join("keep.txt")).unwrap(),
+            "unrelated keep edit\n"
+        );
+    }
+
+    #[test]
+    // @claim:ledger-deletion
+    fn claim_ledger_deletion_removes_snapshots_not_project_files() {
+        let root = tempfile::tempdir().unwrap();
+        let project = root.path().join("project");
+        let store = root.path().join("ledger");
+        fs::create_dir_all(&project).unwrap();
+        fs::write(project.join("keep.txt"), "project stays\n").unwrap();
+        write_checkpoint(&project, &store, "Capture".into(), vec![], false, None).unwrap();
+        assert!(store.exists());
+        delete_ledger_store(&store).unwrap();
+        assert!(!store.exists());
+        assert_eq!(
+            fs::read_to_string(project.join("keep.txt")).unwrap(),
+            "project stays\n"
+        );
     }
 }

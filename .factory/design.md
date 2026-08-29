@@ -62,7 +62,7 @@ Negative list: no readable text, no logos, no brands, no gradients, no glossy 3D
 
 Assets:
 
-- `hero-ledger.webp`: generated 3:2 hero collage, cropped responsively, ≤300 KB.
+- `hero-ledger.webp`: generated 3:2 hero collage, cropped responsively as 600w, 800w, and 1200w WebP derivatives; ≤300 KB mobile.
 - `social-card.png`: locally cropped from the hero at 1200×630.
 - `walkthrough-1.webp` through `walkthrough-3.webp`: screenshots of the shipped sample recovery, captured in Chromium.
 - favicon and UI marks: original hand-authored SVG registration cross and ledger tab shapes.

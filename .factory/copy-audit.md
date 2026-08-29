@@ -1,6 +1,6 @@
 # Landing-page copy audit
 
-Checked 2026-08-28. Counts treat contractions and possessives as one word. Headings and controls are included even when they are fragments. No line exceeds 22 words. No line contains a banned term.
+Checked 2026-08-29. Counts treat contractions and possessives as one word. Headings and controls are included even when they are fragments. No line exceeds 22 words. No line contains a banned term.
 
 | Copy | Words |
 | --- | ---: |
@@ -34,11 +34,12 @@ Checked 2026-08-28. Counts treat contractions and possessives as one word. Headi
 | It records the folder you choose. | 6 |
 | Checkpoint files can contain secrets. | 5 |
 | They stay in the desktop app’s local data folder. | 9 |
-| Delete a ledger when you no longer need it. | 9 |
+| Delete a local ledger when you no longer need it. | 10 |
+| This keeps your project files unchanged. | 6 |
 | The demo uses a separate demo browser storage key. | 9 |
 | Leaving the demo does not copy its data. | 8 |
 | Keep longer histories | 3 |
-| Pro adds longer history, configurable retention, and passphrase-encrypted recovery export. | 10 |
+| Pro adds longer history, configurable retention, and passphrase-encrypted recovery export that opens back into a patch. | 15 |
 | Buy Pro | 2 |
 | Have a license? | 3 |
 | Verify license | 2 |

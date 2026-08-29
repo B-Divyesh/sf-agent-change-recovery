@@ -24,7 +24,7 @@
     "id": "local-privacy",
     "claim": "Project files stay on this device.",
     "where": "landing facts and privacy page",
-    "test": "cargo test --manifest-path src-tauri/Cargo.toml project_files_stay_within_the_chosen_folder",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_local_privacy",
     "sandbox": "native unit sandbox; capture a chosen fixture folder beside a sentinel outside it and assert only the chosen folder is read"
   },
   {
@@ -39,41 +39,41 @@
     "claim": "Pro costs $15 per developer each month.",
     "where": "landing facts and paid tier",
     "test": "npm test -- --grep @claim:price",
-    "sandbox": "fresh browser context at /; verify exact price and Sociobot checkout link"
+    "sandbox": "fresh browser context at /; verify the exact price and that an unpublished checkout is not exposed as a purchase link"
   },
   {
     "id": "free-history-limit",
     "claim": "The first seven checkpoints are included.",
     "where": "landing facts and README",
-    "test": "cargo test --manifest-path src-tauri/Cargo.toml free_history_stops_after_seven_checkpoints",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_free_history_limit",
     "sandbox": "native unit sandbox; assert free capture stops at seven and an active Pro state permits more"
   },
   {
     "id": "encrypted-export",
     "claim": "Pro exports a passphrase-encrypted recovery file.",
     "where": "landing paid tier and README",
-    "test": "cargo test --manifest-path src-tauri/Cargo.toml encrypted_export_has_versioned_header_and_hides_plaintext",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_encrypted_export",
     "sandbox": "native unit sandbox; encrypt fixture patch; assert versioned CRL header and no plaintext secret"
   },
   {
     "id": "git-metadata-exclusion",
     "claim": "Git metadata is excluded from checkpoints.",
     "where": "landing local-sidecar section, terms, README",
-    "test": "cargo test --manifest-path src-tauri/Cargo.toml excludes_git_metadata_from_checkpoints",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_git_metadata_exclusion",
     "sandbox": "native unit sandbox; capture a fixture with .git/HEAD and assert no .git path is included"
   },
   {
     "id": "chosen-folder-only",
     "claim": "The ledger records the folder you choose.",
     "where": "landing local-sidecar section and privacy page",
-    "test": "cargo test --manifest-path src-tauri/Cargo.toml project_files_stay_within_the_chosen_folder",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_chosen_folder_only",
     "sandbox": "native unit sandbox; capture a chosen fixture folder beside a sentinel outside it and assert only the chosen folder is read"
   },
   {
     "id": "large-file-skip",
     "claim": "Files over 2 MB are skipped.",
     "where": "README desktop app instructions",
-    "test": "cargo test --manifest-path src-tauri/Cargo.toml skips_files_larger_than_two_megabytes",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_large_file_skip",
     "sandbox": "native unit sandbox; capture a small file and a 2 MB plus one byte fixture, then assert only the small file is recorded"
   },
   {
@@ -82,5 +82,33 @@
     "where": "README paid tier summary",
     "test": "npm test -- --grep @claim:free-safety-and-patch-export",
     "sandbox": "fresh browser context at /demo without a license; assert the reverse and patch-export controls are enabled and complete their free flow"
+  },
+  {
+    "id": "reversible-safety-checkpoint",
+    "claim": "A safety checkpoint can restore a mistaken selected-file reversal.",
+    "where": "desktop restore confirmation and safety checkpoint ledger row",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_reversible_safety_checkpoint",
+    "sandbox": "native fixture; reverse alpha only, then select the automatic safety checkpoint and restore alpha while keep.txt remains unchanged"
+  },
+  {
+    "id": "ledger-deletion",
+    "claim": "Delete a local ledger without changing project files.",
+    "where": "landing privacy section, privacy page, desktop ledger controls, README",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_ledger_deletion_removes_snapshots_not_project_files",
+    "sandbox": "native fixture; create a checkpoint, delete its ledger store, and assert the project file remains"
+  },
+  {
+    "id": "encrypted-import",
+    "claim": "Open an encrypted recovery file back into a patch without running it.",
+    "where": "landing Pro section, encrypted export dialog, desktop import control, terms, README",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_encrypted_import_opens_a_patch_without_running_it",
+    "sandbox": "native fixture; encrypt a unified patch, decrypt it with the right passphrase, and assert it is unchanged without invoking patch"
+  },
+  {
+    "id": "linux-installer",
+    "claim": "The Linux one-line installer verifies and installs an executable app.",
+    "where": "README Linux install instructions",
+    "test": "npm test -- --grep @claim:linux-installer",
+    "sandbox": "mock GitHub release; assert checksum verification, stable installation path, executable mode, and successful launch"
   }
 ]

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -55,7 +55,7 @@ test('@claim:demo-isolation resets only demo namespaced data', async ({ page }) 
   expect(await page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('demo:')))).toEqual([]);
 });
 
-test('@claim:local-privacy demo recovery makes no cross-origin requests', async ({ page }) => {
+test('demo recovery makes no cross-origin requests', async ({ page }) => {
   const origins = new Set<string>();
   page.on('request', request => origins.add(new URL(request.url()).origin));
   await page.goto('/demo');
@@ -85,7 +85,7 @@ test('service worker installs the shipped shell, updates its cache, and keeps th
     const registration = await navigator.serviceWorker.getRegistration();
     await registration?.update();
     const keys = await caches.keys();
-    const cache = await caches.open('recovery-ledger-v3');
+    const cache = await caches.open('recovery-ledger-v4');
     return {
       active: registration?.active?.state,
       script: registration?.active?.scriptURL,
@@ -96,7 +96,7 @@ test('service worker installs the shipped shell, updates its cache, and keeps th
   });
   expect(installed.active).toBe('activated');
   expect(installed.script).toContain('/sw.js');
-  expect(installed.keys).toContain('recovery-ledger-v3');
+  expect(installed.keys).toContain('recovery-ledger-v4');
   expect(installed.cachedDemo).toBe(true);
   expect(installed.cachedShell).toBe(true);
   await context.setOffline(true);
@@ -104,10 +104,18 @@ test('service worker installs the shipped shell, updates its cache, and keeps th
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Inspect the failed session change');
 });
 
-test('@claim:price shows the exact Pro price and checkout', async ({ page }) => {
+test('@claim:price shows the exact Pro price without exposing an unpublished checkout', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('.price')).toContainText('$15');
-  await expect(page.getByRole('link', { name: 'Buy Pro' })).toHaveAttribute('href', 'https://api.sociobot.in/api/v1/products/agent-change-recovery/checkout');
+  await expect(page.getByText('Pro checkout is being enabled')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Buy Pro' })).toHaveCount(0);
+});
+
+test('checkout resolver only accepts the exact published Sociobot endpoint', () => {
+  const source = readFileSync('src/main.ts', 'utf8');
+  expect(source).toContain("checkout?.origin !== 'https://api.sociobot.in'");
+  expect(source).toContain("checkout.pathname !== `/api/v1/products/${slug}/checkout`");
+  expect(source).toContain("product.price_minor !== 1500");
 });
 
 test('@claim:free-safety-and-patch-export keeps safety and patch export available without a license', async ({ page }) => {
@@ -146,6 +154,23 @@ test('mobile landing has no horizontal overflow at 390px', async ({ page }) => {
   await page.goto('/');
   await expect.poll(() => page.locator('.hero-art').evaluate(node => getComputedStyle(node).marginInlineStart)).toBe('0px');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+test('mobile links and controls meet the 44px touch-target baseline', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Menu' }).click();
+  const targets = await page.locator('.brand, .site-nav a, .footer-links a, .preview-detail .button.small').evaluateAll(nodes =>
+    nodes.map(node => {
+      const box = node.getBoundingClientRect();
+      return { text: node.textContent?.trim(), width: box.width, height: box.height };
+    })
+  );
+  expect(targets).not.toEqual([]);
+  for (const target of targets) {
+    expect(target.width, `${target.text} must be at least 44px wide`).toBeGreaterThanOrEqual(44);
+    expect(target.height, `${target.text} must be at least 44px high`).toBeGreaterThanOrEqual(44);
+  }
 });
 
 test('reverse dialog traps focus and restores it to its trigger', async ({ page }) => {
@@ -195,4 +220,49 @@ test('every route has its own title and history navigation works', async ({ page
   await expect(page).toHaveTitle('Privacy — Change Recovery Ledger');
   await page.goBack();
   await expect(page).toHaveTitle('Change Recovery Ledger — Reverse agent changes');
+});
+
+test('@claim:linux-installer verifies, installs, and makes the AppImage executable', async () => {
+  test.skip(process.platform !== 'linux', 'the shipped Linux installer is exercised on Linux');
+  const sandbox = mkdtempSync(join(tmpdir(), 'acr-install-'));
+  const mockBin = join(sandbox, 'bin');
+  const installedBin = join(sandbox, 'installed-bin');
+  const asset = join(sandbox, 'Change.Recovery.Ledger_0.1.2_amd64.AppImage');
+  const file = 'Change.Recovery.Ledger_0.1.2_amd64.AppImage';
+  mkdirSync(mockBin);
+  writeFileSync(asset, '#!/bin/sh\nprintf "ledger mock\\n"\n');
+  const checksum = execFileSync('sha256sum', [asset], { encoding: 'utf8' }).split(/\s+/)[0];
+  const curl = join(mockBin, 'curl');
+  writeFileSync(curl, `#!/bin/sh
+set -eu
+output=""
+next=""
+last=""
+for argument in "$@"; do
+  if [ "$next" = "yes" ]; then output="$argument"; next=""; continue; fi
+  if [ "$argument" = "-o" ]; then next="yes"; continue; fi
+  last="$argument"
+done
+case "$last" in
+  *releases/latest) printf '%s' '{"assets":[{"name":"${file}","browser_download_url":"https://example.test/${file}"},{"name":"SHA256SUMS","browser_download_url":"https://example.test/SHA256SUMS"}]}' ;;
+  *SHA256SUMS) printf '%s  %s\\n' '${checksum}' '${file}' ;;
+  *${file}) cp "$MOCK_ASSET" "$output" ;;
+  *) exit 1 ;;
+esac
+`);
+  chmodSync(curl, 0o755);
+  try {
+    const output = execFileSync('/bin/sh', ['public/install.sh'], {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+      env: { ...process.env, PATH: `${mockBin}:${process.env.PATH}`, XDG_BIN_HOME: installedBin, MOCK_ASSET: asset }
+    });
+    const target = join(installedBin, 'change-recovery-ledger');
+    expect(output).toContain(`Installed and verified Change Recovery Ledger at ${target}`);
+    expect(existsSync(target)).toBe(true);
+    expect(statSync(target).mode & 0o111).not.toBe(0);
+    expect(execFileSync(target, { encoding: 'utf8' })).toBe('ledger mock\n');
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
 });
