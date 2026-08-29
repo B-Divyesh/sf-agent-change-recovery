@@ -514,13 +514,13 @@
       "degree": 12
     },
     {
-      "id": "src_tauri_src_lib_project_key",
-      "label": "project_key()",
+      "id": "src_main_render",
+      "label": "render()",
       "degree": 11
     },
     {
-      "id": "src_tauri_src_lib_load_snapshot",
-      "label": "load_snapshot()",
+      "id": "src_main_showtoast",
+      "label": "showToast()",
       "degree": 11
     },
     {
@@ -529,8 +529,8 @@
       "degree": 11
     },
     {
-      "id": "src_main_render",
-      "label": "render()",
+      "id": "src_tauri_src_lib_load_snapshot",
+      "label": "load_snapshot()",
       "degree": 11
     }
   ],
