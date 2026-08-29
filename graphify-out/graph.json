@@ -1679,94 +1679,94 @@
       "source_location": "L51"
     },
     {
-      "id": "src_tauri_gen_schemas_linux_schema_items_type",
-      "label": "type",
-      "_origin": "ast",
-      "community": 10,
-      "file_type": "code",
-      "norm_label": "type",
-      "source_file": "src-tauri/gen/schemas/linux-schema.json",
-      "source_location": "L76"
-    },
-    {
-      "id": "src_tauri_gen_schemas_linux_schema_properties_webviews",
-      "label": "webviews",
-      "_origin": "ast",
-      "community": 10,
-      "file_type": "code",
-      "norm_label": "webviews",
-      "source_file": "src-tauri/gen/schemas/linux-schema.json",
-      "source_location": "L79"
-    },
-    {
-      "id": "src_tauri_gen_schemas_linux_schema_properties_windows",
-      "label": "windows",
-      "_origin": "ast",
-      "community": 10,
-      "file_type": "code",
-      "norm_label": "windows",
-      "source_file": "src-tauri/gen/schemas/linux-schema.json",
-      "source_location": "L72"
-    },
-    {
-      "id": "src_tauri_gen_schemas_linux_schema_webviews_description",
+      "id": "src_tauri_gen_schemas_linux_schema_capabilityremote_description",
       "label": "description",
       "_origin": "ast",
       "community": 10,
       "file_type": "code",
       "norm_label": "description",
       "source_file": "src-tauri/gen/schemas/linux-schema.json",
-      "source_location": "L80"
+      "source_location": "L107"
     },
     {
-      "id": "src_tauri_gen_schemas_linux_schema_webviews_items",
-      "label": "items",
+      "id": "src_tauri_gen_schemas_linux_schema_capabilityremote_properties",
+      "label": "properties",
       "_origin": "ast",
       "community": 10,
       "file_type": "code",
-      "norm_label": "items",
+      "norm_label": "properties",
       "source_file": "src-tauri/gen/schemas/linux-schema.json",
-      "source_location": "L82"
+      "source_location": "L112"
     },
     {
-      "id": "src_tauri_gen_schemas_linux_schema_webviews_type",
+      "id": "src_tauri_gen_schemas_linux_schema_capabilityremote_required",
+      "label": "required",
+      "_origin": "ast",
+      "community": 10,
+      "file_type": "code",
+      "norm_label": "required",
+      "source_file": "src-tauri/gen/schemas/linux-schema.json",
+      "source_location": "L109"
+    },
+    {
+      "id": "src_tauri_gen_schemas_linux_schema_capabilityremote_type",
       "label": "type",
       "_origin": "ast",
       "community": 10,
       "file_type": "code",
       "norm_label": "type",
       "source_file": "src-tauri/gen/schemas/linux-schema.json",
-      "source_location": "L81"
+      "source_location": "L108"
     },
     {
-      "id": "src_tauri_gen_schemas_linux_schema_windows_description",
+      "id": "src_tauri_gen_schemas_linux_schema_definitions_capabilityremote",
+      "label": "CapabilityRemote",
+      "_origin": "ast",
+      "community": 10,
+      "file_type": "code",
+      "norm_label": "capabilityremote",
+      "source_file": "src-tauri/gen/schemas/linux-schema.json",
+      "source_location": "L106"
+    },
+    {
+      "id": "src_tauri_gen_schemas_linux_schema_properties_urls",
+      "label": "urls",
+      "_origin": "ast",
+      "community": 10,
+      "file_type": "code",
+      "norm_label": "urls",
+      "source_file": "src-tauri/gen/schemas/linux-schema.json",
+      "source_location": "L113"
+    },
+    {
+      "id": "src_tauri_gen_schemas_linux_schema_urls_description",
       "label": "description",
       "_origin": "ast",
       "community": 10,
       "file_type": "code",
       "norm_label": "description",
       "source_file": "src-tauri/gen/schemas/linux-schema.json",
-      "source_location": "L73"
+      "source_location": "L114"
     },
     {
-      "id": "src_tauri_gen_schemas_linux_schema_windows_items",
-      "label": "items",
-      "_origin": "ast",
-      "community": 10,
-      "file_type": "code",
-      "norm_label": "items",
-      "source_file": "src-tauri/gen/schemas/linux-schema.json",
-      "source_location": "L75"
-    },
-    {
-      "id": "src_tauri_gen_schemas_linux_schema_windows_type",
+      "id": "src_tauri_gen_schemas_linux_schema_urls_type",
       "label": "type",
       "_origin": "ast",
       "community": 10,
       "file_type": "code",
       "norm_label": "type",
       "source_file": "src-tauri/gen/schemas/linux-schema.json",
-      "source_location": "L74"
+      "source_location": "L115"
+    },
+    {
+      "id": "src_tauri_gen_schemas_linux_schema_json_ref_urls",
+      "label": "urls",
+      "_origin": "ast",
+      "community": 10,
+      "file_type": "concept",
+      "norm_label": "urls",
+      "source_file": "src-tauri/gen/schemas/linux-schema.json",
+      "source_location": "L109"
     },
     {
       "id": "src_tauri_src_lib_assert_replaced_symlink_parent_is_rejected",
@@ -4318,74 +4318,34 @@
       "source_location": "L2198"
     },
     {
-      "id": "src_tauri_gen_schemas_linux_schema_capabilityremote_description",
-      "label": "description",
-      "_origin": "ast",
-      "community": 8,
-      "file_type": "code",
-      "norm_label": "description",
-      "source_file": "src-tauri/gen/schemas/linux-schema.json",
-      "source_location": "L107"
-    },
-    {
-      "id": "src_tauri_gen_schemas_linux_schema_capabilityremote_properties",
-      "label": "properties",
-      "_origin": "ast",
-      "community": 8,
-      "file_type": "code",
-      "norm_label": "properties",
-      "source_file": "src-tauri/gen/schemas/linux-schema.json",
-      "source_location": "L112"
-    },
-    {
-      "id": "src_tauri_gen_schemas_linux_schema_capabilityremote_required",
-      "label": "required",
-      "_origin": "ast",
-      "community": 8,
-      "file_type": "code",
-      "norm_label": "required",
-      "source_file": "src-tauri/gen/schemas/linux-schema.json",
-      "source_location": "L109"
-    },
-    {
-      "id": "src_tauri_gen_schemas_linux_schema_capabilityremote_type",
+      "id": "src_tauri_gen_schemas_linux_schema_items_type",
       "label": "type",
       "_origin": "ast",
       "community": 8,
       "file_type": "code",
       "norm_label": "type",
       "source_file": "src-tauri/gen/schemas/linux-schema.json",
-      "source_location": "L108"
+      "source_location": "L76"
     },
     {
-      "id": "src_tauri_gen_schemas_linux_schema_definitions_capabilityremote",
-      "label": "CapabilityRemote",
+      "id": "src_tauri_gen_schemas_linux_schema_properties_webviews",
+      "label": "webviews",
       "_origin": "ast",
       "community": 8,
       "file_type": "code",
-      "norm_label": "capabilityremote",
+      "norm_label": "webviews",
       "source_file": "src-tauri/gen/schemas/linux-schema.json",
-      "source_location": "L106"
+      "source_location": "L79"
     },
     {
-      "id": "src_tauri_gen_schemas_linux_schema_properties_urls",
-      "label": "urls",
+      "id": "src_tauri_gen_schemas_linux_schema_properties_windows",
+      "label": "windows",
       "_origin": "ast",
       "community": 8,
       "file_type": "code",
-      "norm_label": "urls",
+      "norm_label": "windows",
       "source_file": "src-tauri/gen/schemas/linux-schema.json",
-      "source_location": "L113"
-    },
-    {
-      "id": "src_tauri_gen_schemas_linux_schema_urls_description",
-      "label": "description",
-      "_origin": "ast",
-      "community": 8,
-      "file_type": "code",
-      "norm_label": "description",
-      "source_file": "src-tauri/gen/schemas/linux-schema.json",
-      "source_location": "L114"
+      "source_location": "L72"
     },
     {
       "id": "src_tauri_gen_schemas_linux_schema_urls_items",
@@ -4398,24 +4358,64 @@
       "source_location": "L116"
     },
     {
-      "id": "src_tauri_gen_schemas_linux_schema_urls_type",
+      "id": "src_tauri_gen_schemas_linux_schema_webviews_description",
+      "label": "description",
+      "_origin": "ast",
+      "community": 8,
+      "file_type": "code",
+      "norm_label": "description",
+      "source_file": "src-tauri/gen/schemas/linux-schema.json",
+      "source_location": "L80"
+    },
+    {
+      "id": "src_tauri_gen_schemas_linux_schema_webviews_items",
+      "label": "items",
+      "_origin": "ast",
+      "community": 8,
+      "file_type": "code",
+      "norm_label": "items",
+      "source_file": "src-tauri/gen/schemas/linux-schema.json",
+      "source_location": "L82"
+    },
+    {
+      "id": "src_tauri_gen_schemas_linux_schema_webviews_type",
       "label": "type",
       "_origin": "ast",
       "community": 8,
       "file_type": "code",
       "norm_label": "type",
       "source_file": "src-tauri/gen/schemas/linux-schema.json",
-      "source_location": "L115"
+      "source_location": "L81"
     },
     {
-      "id": "src_tauri_gen_schemas_linux_schema_json_ref_urls",
-      "label": "urls",
+      "id": "src_tauri_gen_schemas_linux_schema_windows_description",
+      "label": "description",
       "_origin": "ast",
       "community": 8,
-      "file_type": "concept",
-      "norm_label": "urls",
+      "file_type": "code",
+      "norm_label": "description",
       "source_file": "src-tauri/gen/schemas/linux-schema.json",
-      "source_location": "L109"
+      "source_location": "L73"
+    },
+    {
+      "id": "src_tauri_gen_schemas_linux_schema_windows_items",
+      "label": "items",
+      "_origin": "ast",
+      "community": 8,
+      "file_type": "code",
+      "norm_label": "items",
+      "source_file": "src-tauri/gen/schemas/linux-schema.json",
+      "source_location": "L75"
+    },
+    {
+      "id": "src_tauri_gen_schemas_linux_schema_windows_type",
+      "label": "type",
+      "_origin": "ast",
+      "community": 8,
+      "file_type": "code",
+      "norm_label": "type",
+      "source_file": "src-tauri/gen/schemas/linux-schema.json",
+      "source_location": "L74"
     },
     {
       "id": "src_tauri_gen_schemas_linux_schema_capability_properties",
@@ -15195,5 +15195,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "97eb3eed0b7df4bc38010f515f5b0bf451bae4bf"
+  "built_at_commit": "7f902b6138057c989590c39bd828d81a6ee6cd9c"
 }
