@@ -169,10 +169,10 @@
   },
   {
     "id": "release-request-privacy",
-    "claim": "The landing page asks GitHub for current public release filenames.",
+    "claim": "Before a visitor starts checkout, the landing page asks only GitHub for release files and Sociobot for product publication.",
     "where": "privacy policy and README",
     "test": "npm test -- --grep @claim:release-request-privacy",
-    "sandbox": "fresh landing page with a mocked release API; record requests and assert only same-origin plus GitHub"
+    "sandbox": "fresh landing page with mocked complete release and published Pro catalog; record requests and assert only same-origin, GitHub, and Sociobot"
   },
   {
     "id": "linux-installer",

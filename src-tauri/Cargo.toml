@@ -1,6 +1,6 @@
 [package]
 name = "change-recovery-ledger"
-version = "0.1.8"
+version = "0.1.9"
 description = "Local semantic checkpoints for agent changes"
 authors = ["Param Factory"]
 license = "MIT"

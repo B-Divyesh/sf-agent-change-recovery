@@ -144,28 +144,27 @@ test('@claim:pro-license restores an issued Sociobot license without exposing an
   expect(requests).toHaveLength(2);
 });
 
-test('checkout availability requires a public listing and a reachable checkout before advertising a purchase', async ({ page, context }) => {
-  let checkoutStatus = 404;
+test('checkout availability uses the public catalog without opening payment before the visitor clicks', async ({ page, context }) => {
+  let listed = false;
+  let checkoutRequests = 0;
   await context.route(billingCatalogUrl, route => route.fulfill({ json: {
-    data: [{
+    data: listed ? [{
       slug: 'agent-change-recovery',
       checkout_url: checkoutUrl,
       price_minor: 1500,
       currency: 'USD'
-    }]
+    }] : []
   }, headers: corsHeaders }));
-  await context.route(checkoutUrl, route => {
-    expect(route.request().method()).toBe('HEAD');
-    return route.fulfill({ status: checkoutStatus, headers: corsHeaders });
-  });
+  await context.route(checkoutUrl, route => { checkoutRequests += 1; return route.abort(); });
   await page.goto('/');
   await expect(page.getByText('Pro checkout is being enabled')).toBeVisible();
   await expect(page.getByRole('link', { name: /subscribe to pro/i })).toHaveCount(0);
   await expect(page.locator('#pro-price')).toBeHidden();
-  checkoutStatus = 204;
+  listed = true;
   await page.reload();
   await expect(page.getByRole('link', { name: /subscribe to pro/i })).toHaveAttribute('href', checkoutUrl);
   await expect(page.locator('#pro-price')).toContainText('$15');
+  expect(checkoutRequests).toBe(0);
 });
 
 test('@claim:license-daily-verification checks a saved license once per day', async ({ page }) => {
@@ -251,13 +250,17 @@ test('Apple silicon Mac visitors receive the ARM build and can still choose Inte
   await context.close();
 });
 
-test('@claim:release-request-privacy requests only the disclosed GitHub release API', async ({ page }) => {
+test('@claim:release-request-privacy requests only the disclosed GitHub and Sociobot APIs before purchase', async ({ page }) => {
   const origins = new Set<string>();
   page.on('request', request => origins.add(new URL(request.url()).origin));
-  await page.route(releaseApiUrl, route => route.fulfill({ json: { tag_name: 'v0.1.2', assets: [] } }));
+  await page.route(releaseApiUrl, route => route.fulfill({ json: { tag_name: releaseTag, assets: completeReleaseAssets } }));
+  await page.route(billingCatalogUrl, route => route.fulfill({ json: { data: [{
+    slug: 'agent-change-recovery', checkout_url: checkoutUrl, price_minor: 1500, currency: 'USD'
+  }] }, headers: corsHeaders }));
   await page.goto('/');
   await expect(page.locator('#download-status')).not.toHaveText('Checking published releases…');
   expect([...origins].sort()).toEqual(['http://127.0.0.1:4173', 'https://api.github.com', 'https://api.sociobot.in']);
+  await expect(page.getByRole('link', { name: /subscribe to pro/i })).toHaveAttribute('href', checkoutUrl);
 });
 
 for (const path of ['/', '/demo', '/app', '/privacy', '/terms', '/missing-sheet']) {

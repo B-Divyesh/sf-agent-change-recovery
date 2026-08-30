@@ -95,14 +95,15 @@ npm run build
 `npm run build` writes the static deployment output to `dist/site`.
 
 The release workflow builds desktop packages on macOS, Windows, and Linux runners.
-Tag `v0.1.8` or later to start that workflow.
+Tag `v0.1.9` or later to start that workflow.
 It publishes checksums and a release manifest with the desktop files.
 Before the workflow passes, it verifies the exact tag, all desktop files, `SHA256SUMS`, and `latest.json` from the published release.
 
 ## Privacy
 
 Project contents stay in the desktop app and encrypted ledger storage.
-The browser landing page asks GitHub for current public release filenames and Sociobot whether Pro checkout is published.
+Before a visitor starts checkout, the browser landing page asks GitHub for current public release filenames and Sociobot whether Pro checkout is published.
+It opens hosted checkout only after the visitor selects **Subscribe to Pro**.
 See the in-product [privacy policy](https://agent-change-recovery.sociobot.in/privacy) and [terms](https://agent-change-recovery.sociobot.in/terms).
 
 ## License

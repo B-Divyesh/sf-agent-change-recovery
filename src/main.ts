@@ -40,7 +40,7 @@ declare global {
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const product = 'Change Recovery Ledger';
-const appVersion = '0.1.8';
+const appVersion = '0.1.9';
 const demoKey = 'demo:agent-change-recovery:ledger';
 const releasePage = 'https://github.com/B-Divyesh/sf-agent-change-recovery/releases';
 const releaseCacheKey = `release:agent-change-recovery:${appVersion}`;
@@ -336,7 +336,7 @@ function realAppPage() {
 }
 
 function legalPage(kind: 'privacy' | 'terms') {
-  const privacy = `<p><strong>Effective 29 August 2026.</strong></p><h2>Project data stays local</h2><p>The desktop app reads only the project folder you enter. It does not send project files, patches, commands, or intent notes to us.</p><p>Your ledger passphrase encrypts local snapshots, manifests, retention settings, and policy notes. The passphrase stays in app memory while the ledger is open. It is not written to disk.</p><h2>Demo data is separate</h2><p>The browser demo stores its sample state under <code>${demoKey}</code>. Resetting or leaving the demo removes that state.</p><h2>Download and license checks</h2><p>The landing page asks the GitHub API for current public release files. It asks Sociobot whether Pro checkout is published.</p><p>If you restore a license, the app sends that license token to Sociobot only to verify it. The app checks no more than once each day. Project files are never part of that request.</p><h2>Delete your data</h2><p>Open a local ledger in the desktop app. Choose Delete local ledger. This removes local snapshots only. It does not change files in your project folder. You can also clear this site’s browser storage. Contact <a href="mailto:privacy@sociobot.in">privacy@sociobot.in</a> with privacy questions.</p>`;
+  const privacy = `<p><strong>Effective 29 August 2026.</strong></p><h2>Project data stays local</h2><p>The desktop app reads only the project folder you enter. It does not send project files, patches, commands, or intent notes to us.</p><p>Your ledger passphrase encrypts local snapshots, manifests, retention settings, and policy notes. The passphrase stays in app memory while the ledger is open. It is not written to disk.</p><h2>Demo data is separate</h2><p>The browser demo stores its sample state under <code>${demoKey}</code>. Resetting or leaving the demo removes that state.</p><h2>Download and license checks</h2><p>The landing page asks the GitHub API for current public release files. It asks Sociobot whether Pro checkout is published. It opens hosted checkout only when you select Subscribe to Pro.</p><p>If you restore a license, the app sends that license token to Sociobot only to verify it. The app checks no more than once each day. Project files are never part of that request.</p><h2>Delete your data</h2><p>Open a local ledger in the desktop app. Choose Delete local ledger. This removes local snapshots only. It does not change files in your project folder. You can also clear this site’s browser storage. Contact <a href="mailto:privacy@sociobot.in">privacy@sociobot.in</a> with privacy questions.</p>`;
   const terms = `<p><strong>Effective 29 August 2026.</strong></p><h2>Use of the app</h2><p>You may use the app to checkpoint folders you are allowed to access. Review every reversal and patch before relying on it.</p><h2>Pro plan</h2><p>Pro adds 30 or 90 checkpoint retention, a local team policy note, and password-protected recovery export.</p><p>The price and purchase action appear only when Sociobot publishes a working checkout. An issued license can be restored on another device.</p><h2>Git and backups</h2><p>The app is not Git and is not a full backup service. Keep normal version control and backups. Git metadata is excluded from checkpoints.</p><h2>Warranty</h2><p>The software is provided under the MIT License, without warranty. You are responsible for reviewing reversed files and exported patches.</p><h2>Contact</h2><p>Send terms questions to <a href="mailto:support@sociobot.in">support@sociobot.in</a>.</p>`;
   const title = kind === 'privacy' ? 'Read the privacy policy' : 'Read the terms of use';
   return `${header()}<main id="main" tabindex="-1" class="sheet legal"><article><p class="eyebrow">${kind}</p><h1>${title}</h1>${kind === 'privacy' ? privacy : terms}</article></main>${footer()}`;
@@ -833,8 +833,6 @@ async function resolveCheckout() {
       checkout?.origin !== 'https://api.sociobot.in' ||
       checkout.pathname !== `/api/v1/products/${productSlug}/checkout`
     ) throw new Error('Product checkout is not published');
-    const checkoutResponse = await fetch(checkout.href, { method: 'HEAD', redirect: 'manual' });
-    if (!checkoutResponse.ok && checkoutResponse.type !== 'opaqueredirect') throw new Error('Product checkout is unavailable');
     price.hidden = false;
     price.innerHTML = '$15 <small>per developer / month</small>';
     fact.textContent = 'Pro costs $15 per developer each month.';
