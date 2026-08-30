@@ -55,11 +55,18 @@ test('@claim:selective-reversal reverses one selected file and keeps the others'
   await expect(page.getByText('src/account/profile.ts', { exact: true })).toBeVisible();
 });
 
-test('query demo entry opens the isolated sample in one request', async ({ page }) => {
-  await page.goto('/?demo=1');
+test('@claim:one-click-demo opens a complete populated recovery in one click', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('link', { name: 'Try it with sample data' }).click();
   await expect(page).toHaveURL(/\?demo=1$/);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Inspect the failed session change');
   await expect(page.getByText('Demo — sample data, nothing is saved')).toBeVisible();
+  await expect(page.locator('[data-checkpoint]')).toHaveCount(4);
+  await expect(page.getByText('2 of 51 tests failed')).toBeVisible();
+  await expect(page.getByText('Share refresh logic across the editor and account screens. The session file caused two failures.')).toBeVisible();
+  await expect(page.locator('input[data-file]')).toHaveCount(4);
+  await expect(page.getByRole('button', { name: 'Reverse 1 selected file' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Export selected patch' })).toBeVisible();
 });
 
 test('exports selected demo changes as a patch', async ({ page }) => {
@@ -205,6 +212,44 @@ test('packaged Tauri billing uses native commands when browser CORS is unavailab
   }]);
 });
 
+test('@ui:current-folder-comparison shows live-folder changes from the native command', async ({ page, context }) => {
+  await context.addInitScript(() => {
+    const calls: { command: string; args: unknown }[] = [];
+    (window as typeof window & { __nativeCalls: typeof calls }).__nativeCalls = calls;
+    (window as typeof window & { __TAURI_INTERNALS__: { invoke: (command: string, args: unknown) => Promise<unknown> } }).__TAURI_INTERNALS__ = {
+      invoke: async (command, args) => {
+        calls.push({ command, args });
+        if (command === 'get_product_listing') return null;
+        if (command === 'load_sample_project') return {
+          path: '/app-data/sample-project', retention: 7, policy: '', ledger: [{
+            id: 'checkpoint-2', intent: 'Refactor session refresh', detail: 'Captured state', createdAt: '11:31',
+            commands: ['npm test'], checks: '2 tests failed', checkPassed: false,
+            files: [{ path: 'src/auth/session.ts', kind: 'modified', additions: 1, deletions: 1, diff: ['- before', '+ captured'] }]
+          }]
+        };
+        if (command === 'compare_with_folder') return [
+          { path: 'src/auth/session.ts', kind: 'modified', additions: 1, deletions: 1, diff: ['- captured', '+ live folder'] },
+          { path: 'src/new.ts', kind: 'added', additions: 1, deletions: 0, diff: ['+ new file'] }
+        ];
+        throw new Error(`Unexpected native command: ${command}`);
+      }
+    };
+  });
+  await page.goto('/app');
+  await page.getByLabel('Ledger passphrase').fill('sample-passphrase-123');
+  await page.getByRole('button', { name: 'Load sample project' }).click();
+  await expect(page.getByText('src/auth/session.ts', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Compare with folder' }).click();
+  await expect(page.getByText('src/new.ts', { exact: true })).toBeVisible();
+  await expect(page.getByText('2 current-folder changes')).toBeVisible();
+  await page.getByText('Read selected file diff').click();
+  await expect(page.getByText('+ live folder')).toBeVisible();
+  const calls = await page.evaluate(() => (window as typeof window & { __nativeCalls: { command: string; args: unknown }[] }).__nativeCalls);
+  expect(calls.find(call => call.command === 'compare_with_folder')).toEqual({
+    command: 'compare_with_folder', args: { path: '/app-data/sample-project', checkpointId: 'checkpoint-2', passphrase: 'sample-passphrase-123' }
+  });
+});
+
 test('@claim:retention-tiers exposes 2 and 7 free checkpoints and 30 and 90 Pro checkpoints', async ({ page }) => {
   await page.goto('/app');
   const freeOptions = await page.locator('#retention option').evaluateAll(options => options.map(option => ({
@@ -262,7 +307,7 @@ test('service worker installs the shipped shell, updates its cache, and keeps th
     const registration = await navigator.serviceWorker.getRegistration();
     await registration?.update();
     const keys = await caches.keys();
-    const cache = await caches.open('recovery-ledger-v9');
+    const cache = await caches.open('recovery-ledger-v10');
     return {
       active: registration?.active?.state,
       script: registration?.active?.scriptURL,
@@ -273,7 +318,7 @@ test('service worker installs the shipped shell, updates its cache, and keeps th
   });
   expect(installed.active).toBe('activated');
   expect(installed.script).toContain('/sw.js');
-  expect(installed.keys).toContain('recovery-ledger-v9');
+  expect(installed.keys).toContain('recovery-ledger-v10');
   expect(installed.cachedDemo).toBe(true);
   expect(installed.cachedShell).toBe(true);
   await context.setOffline(true);
@@ -470,20 +515,27 @@ test('route metadata updates title, canonical, Open Graph, and Twitter fields', 
   for (const fragment of ['<header', '<footer', 'name="description"', 'rel="canonical"', 'property="og:title"', 'apple-touch-icon']) expect(notFound).toContain(fragment);
 });
 
-test('@claim:windows-installer verifies a checksum before starting the installer', () => {
+test('the real 404 mirrors the shared header and footer structure', async ({ page }) => {
+  await page.goto('/');
+  const homeHeader = await page.locator('header a').evaluateAll(links => links.map(link => ({ href: link.getAttribute('href'), text: link.textContent?.trim() })));
+  const homeFooter = await page.locator('footer a').evaluateAll(links => links.map(link => ({ href: link.getAttribute('href'), text: link.textContent?.trim() })));
+  const homeBuild = await page.locator('footer small').textContent();
+  await page.setContent(readFileSync('public/404.html', 'utf8'));
+  const missingHeader = await page.locator('header a').evaluateAll(links => links.map(link => ({ href: link.getAttribute('href'), text: link.textContent?.trim() })));
+  const missingFooter = await page.locator('footer a').evaluateAll(links => links.map(link => ({ href: link.getAttribute('href'), text: link.textContent?.trim() })));
+  expect(missingHeader).toEqual(homeHeader);
+  expect(missingFooter).toEqual(homeFooter);
+  expect(await page.locator('footer small').textContent()).toBe(homeBuild);
+});
+
+test('Windows installer script keeps checksum validation before launch', () => {
   const source = readFileSync('public/install.ps1', 'utf8');
   expect(source).toContain('Get-FileHash');
   expect(source).toContain('Start-Process');
   expect(source.indexOf('Get-FileHash')).toBeLessThan(source.indexOf('Start-Process'));
 });
 
-test('@claim:unsigned-macos keeps macOS packaging unsigned until credentials are configured', () => {
-  const source = readFileSync('.github/workflows/release.yml', 'utf8');
-  expect(source).toContain('macos-latest');
-  expect(source).not.toMatch(/APPLE_CERTIFICATE|APPLE_SIGNING_IDENTITY|notar/i);
-});
-
-test('@claim:release-platforms declares macOS, Windows, Linux, checksums, and manifest publishing', () => {
+test('release workflow declares package, checksum, manifest, and consumer-proof jobs', () => {
   const source = readFileSync('.github/workflows/release.yml', 'utf8');
   expect(source).toContain('macos-latest');
   expect(source).toContain('windows-latest');
@@ -492,6 +544,8 @@ test('@claim:release-platforms declares macOS, Windows, Linux, checksums, and ma
   expect(source).toContain('latest.json');
   expect(source).toContain('Verify published release identity');
   expect(source).toContain('scripts/verify-release.py');
+  expect(source).toContain('windows-installer-consumer');
+  expect(readFileSync('scripts/windows-consumer-proof.ps1', 'utf8')).toContain('windows-consumer-proof.json');
 });
 
 test('@claim:release-candidate-identity rejects a stale release and validates a complete tagged release', () => {
@@ -600,7 +654,7 @@ esac
   }
 });
 
-test('macOS installer selects the Intel disk image instead of the first ARM asset', () => {
+test('@claim:macos-installer selects and verifies the matching Mac disk image', () => {
   const sandbox = mkdtempSync(join(tmpdir(), 'acr-macos-install-'));
   const mockBin = join(sandbox, 'bin');
   const asset = join(sandbox, 'Change.Recovery.Ledger_0.1.2_x64.dmg');
@@ -645,5 +699,48 @@ esac
     expect(output).not.toContain('aarch64');
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
+  }
+
+  const armSandbox = mkdtempSync(join(tmpdir(), 'acr-macos-arm-install-'));
+  const armMockBin = join(armSandbox, 'bin');
+  const armFile = 'Change.Recovery.Ledger_0.1.12_aarch64.dmg';
+  const armAsset = join(armSandbox, armFile);
+  mkdirSync(armMockBin);
+  writeFileSync(armAsset, 'verified Apple silicon disk image');
+  const armChecksum = execFileSync('sha256sum', [armAsset], { encoding: 'utf8' }).split(/\s+/)[0];
+  writeFileSync(join(armMockBin, 'uname'), `#!/bin/sh
+case "$1" in
+  -s) printf '%s\\n' Darwin ;;
+  -m) printf '%s\\n' arm64 ;;
+esac
+`);
+  writeFileSync(join(armMockBin, 'curl'), `#!/bin/sh
+set -eu
+output=""
+next=""
+last=""
+for argument in "$@"; do
+  if [ "$next" = "yes" ]; then output="$argument"; next=""; continue; fi
+  if [ "$argument" = "-o" ]; then next="yes"; continue; fi
+  last="$argument"
+done
+case "$last" in
+  *releases/latest) printf '%s' '{"assets":[{"name":"${armFile}","browser_download_url":"https://example.test/${armFile}"},{"name":"Change.Recovery.Ledger_0.1.12_x64.dmg","browser_download_url":"https://example.test/intel.dmg"},{"name":"SHA256SUMS","browser_download_url":"https://example.test/SHA256SUMS"}]}' ;;
+  *SHA256SUMS) printf '%s  %s\\n' '${armChecksum}' '${armFile}' ;;
+  *${armFile}) cp "$MOCK_ASSET" "$output" ;;
+  *) exit 1 ;;
+esac
+`);
+  chmodSync(join(armMockBin, 'uname'), 0o755);
+  chmodSync(join(armMockBin, 'curl'), 0o755);
+  try {
+    const output = execFileSync('/bin/sh', ['public/install.sh'], {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+      env: { ...process.env, PATH: `${armMockBin}:${process.env.PATH}`, TMPDIR: armSandbox, MOCK_ASSET: armAsset }
+    });
+    expect(output).toContain(`Downloaded and verified ${armFile}`);
+  } finally {
+    rmSync(armSandbox, { recursive: true, force: true });
   }
 });

@@ -625,6 +625,21 @@ fn list_manifests(project_store: &Path, crypto: &LedgerCrypto) -> Result<Vec<Che
         .collect()
 }
 
+fn compare_checkpoint_with_folder_in_store(
+    project_path: &Path,
+    project_store: &Path,
+    crypto: &LedgerCrypto,
+    checkpoint_id: &str,
+) -> Result<Vec<FileChange>, String> {
+    let checkpoint_dir = checkpoint_dirs(project_store)?
+        .into_iter()
+        .find(|dir| dir.file_name().and_then(|name| name.to_str()) == Some(checkpoint_id))
+        .ok_or("The selected checkpoint no longer exists.")?;
+    let recorded = load_snapshot(&checkpoint_dir, crypto)?;
+    let current = read_project(project_path)?;
+    Ok(changes_between(&recorded, &current))
+}
+
 fn prune_checkpoints(
     project_store: &Path,
     crypto: &LedgerCrypto,
@@ -960,6 +975,25 @@ fn load_ledger(
         retention: settings.retention,
         policy: settings.policy,
     })
+}
+
+#[tauri::command]
+fn compare_with_folder(
+    app: tauri::AppHandle,
+    path: String,
+    checkpoint_id: String,
+    passphrase: String,
+) -> Result<Vec<FileChange>, String> {
+    let project_path = fs::canonicalize(Path::new(&path)).map_err(|_| {
+        "The project folder was not found. Check the full path and try again.".to_string()
+    })?;
+    let base = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|error| error.to_string())?;
+    let store = base.join("ledgers").join(project_key(&project_path));
+    let (crypto, _) = open_encrypted_store(&store, &passphrase)?;
+    compare_checkpoint_with_folder_in_store(&project_path, &store, &crypto, &checkpoint_id)
 }
 
 #[tauri::command]
@@ -1490,6 +1524,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             capture_checkpoint,
             load_ledger,
+            compare_with_folder,
             restore_files,
             export_patch,
             export_encrypted,
@@ -1595,7 +1630,7 @@ mod tests {
     }
 
     #[test]
-    // @claim:encrypted-export
+    // @claim:encrypted-recovery-export
     fn claim_encrypted_export() {
         let patch =
             b"diff --git a/secret.txt b/secret.txt\n--- a/secret.txt\n+++ b/secret.txt\n+secret\n";
@@ -1605,7 +1640,7 @@ mod tests {
     }
 
     #[test]
-    // @claim:encrypted-import
+    // @claim:encrypted-recovery-import
     fn claim_encrypted_import_opens_a_patch_without_running_it() {
         let patch =
             b"diff --git a/secret.txt b/secret.txt\n--- a/secret.txt\n+++ b/secret.txt\n+secret\n";
@@ -1676,23 +1711,37 @@ mod tests {
     }
 
     #[test]
-    // @claim:local-privacy
     fn claim_local_privacy() {
         let root = tempfile::tempdir().unwrap();
         let chosen = root.path().join("chosen");
+        let store = root.path().join("app-data/ledgers/privacy-proof");
         fs::create_dir_all(&chosen).unwrap();
-        fs::write(chosen.join("inside.txt"), "keep").unwrap();
-        fs::write(root.path().join("outside.txt"), "do not read").unwrap();
-        let files = read_project(&chosen).unwrap();
-        assert_eq!(files.get("inside.txt"), Some(&b"keep".to_vec()));
-        assert!(!files.values().any(|content| content == b"do not read"));
-        // The capture core has no outbound transport. A listening local endpoint
-        // stays untouched while a unique project value is captured.
-        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-        listener.set_nonblocking(true).unwrap();
-        assert!(
-            matches!(listener.accept(), Err(error) if error.kind() == std::io::ErrorKind::WouldBlock)
+        let content = "CRL-EGRESS-CONTENT-8143";
+        let request = "CRL-EGRESS-REQUEST-2271";
+        let command = "CRL-EGRESS-COMMAND-5938 --local-only";
+        fs::write(chosen.join("inside.txt"), content).unwrap();
+        fs::write(root.path().join("outside.txt"), "CRL-OUTSIDE-SENTINEL-6652").unwrap();
+        let (crypto, _) =
+            open_ledger_store(&store, TEST_PASSPHRASE, Some(FREE_RETENTION_MAX), false).unwrap();
+        let ledger = write_checkpoint(
+            &chosen,
+            &store,
+            &crypto,
+            FREE_RETENTION_MAX,
+            normal_write!(request, vec![command.into()]),
+        )
+        .unwrap();
+        let checkpoint = ledger.last().unwrap();
+        assert_eq!(checkpoint.intent, request);
+        assert_eq!(checkpoint.commands, vec![command]);
+        let snapshot = load_snapshot(&checkpoint_dirs(&store).unwrap()[0], &crypto).unwrap();
+        assert_eq!(
+            snapshot.get("inside.txt"),
+            Some(&content.as_bytes().to_vec())
         );
+        assert!(!snapshot
+            .values()
+            .any(|value| value == b"CRL-OUTSIDE-SENTINEL-6652"));
     }
 
     #[test]
@@ -1868,6 +1917,51 @@ mod tests {
         assert_eq!(
             third.last().unwrap().files[0].diff,
             vec!["- two", "+ three"]
+        );
+    }
+
+    #[test]
+    // @claim:current-folder-comparison
+    fn claim_current_folder_comparison_reads_the_live_folder() {
+        let root = tempfile::tempdir().unwrap();
+        let project = root.path().join("project");
+        let store = root.path().join("ledger");
+        fs::create_dir_all(&project).unwrap();
+        let crypto = test_crypto(&store);
+        fs::write(project.join("state.txt"), "captured state\n").unwrap();
+        let ledger = write_checkpoint(
+            &project,
+            &store,
+            &crypto,
+            FREE_RETENTION_MAX,
+            normal_write!("Capture before review", vec![]),
+        )
+        .unwrap();
+        let checkpoint_id = ledger.last().unwrap().id.clone();
+        fs::write(project.join("state.txt"), "live folder state\n").unwrap();
+        fs::write(project.join("new.txt"), "added after capture\n").unwrap();
+
+        let visible =
+            compare_checkpoint_with_folder_in_store(&project, &store, &crypto, &checkpoint_id)
+                .unwrap();
+
+        assert_eq!(visible.len(), 2);
+        let changed = visible
+            .iter()
+            .find(|file| file.path == "state.txt")
+            .unwrap();
+        assert_eq!(changed.kind, "modified");
+        assert_eq!(
+            changed.diff,
+            vec!["- captured state", "+ live folder state"]
+        );
+        assert_eq!(
+            visible
+                .iter()
+                .find(|file| file.path == "new.txt")
+                .unwrap()
+                .kind,
+            "added"
         );
     }
 
@@ -2055,14 +2149,16 @@ mod tests {
 
     #[test]
     // @claim:local-encryption
-    fn claim_local_encryption_keeps_project_content_out_of_ledger_files() {
+    fn claim_local_encryption_keeps_project_content_and_passphrase_out_of_storage() {
         let root = tempfile::tempdir().unwrap();
         let project = root.path().join("project");
         let store = root.path().join("ledger");
         fs::create_dir_all(&project).unwrap();
         let secret = "CRL-UNIQUE-LOCAL-SECRET-9817";
+        let passphrase = "CRL-UNIQUE-PASSPHRASE-7419";
         fs::write(project.join("secret.txt"), secret).unwrap();
-        let crypto = test_crypto(&store);
+        let (crypto, _) =
+            open_ledger_store(&store, passphrase, Some(FREE_RETENTION_MAX), false).unwrap();
         write_checkpoint(
             &project,
             &store,
@@ -2080,12 +2176,18 @@ mod tests {
         assert!(!bytes
             .windows(secret.len())
             .any(|window| window == secret.as_bytes()));
+        assert!(!bytes
+            .windows(passphrase.len())
+            .any(|window| window == passphrase.as_bytes()));
         assert!(checkpoint_dirs(&store)
             .unwrap()
             .iter()
             .all(|dir| dir.join("snapshot.enc").exists() && dir.join("manifest.enc").exists()));
+        drop(crypto);
+        assert!(open_encrypted_store(&store, "a-different-passphrase").is_err());
+        let (reopened, _) = open_encrypted_store(&store, passphrase).unwrap();
         assert_eq!(
-            load_snapshot(&checkpoint_dirs(&store).unwrap()[0], &crypto)
+            load_snapshot(&checkpoint_dirs(&store).unwrap()[0], &reopened)
                 .unwrap()
                 .get("secret.txt"),
             Some(&secret.as_bytes().to_vec())

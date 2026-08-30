@@ -1,1 +1,1 @@
-Reverse selected agent changes without losing unrelated work.
+Reverse selected agent changes while keeping unrelated work intact.

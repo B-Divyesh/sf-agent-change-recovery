@@ -1,6 +1,6 @@
 {
   "name": "agent-change-recovery",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,6 +8,8 @@
     "tauri": "node scripts/prepare-linuxdeploy-plugin.mjs && tauri",
     "build": "npm run build:site",
     "build:site": "tsc --noEmit && vite build",
+    "test:claims": "node scripts/run-claims.mjs",
+    "test:claim-tags": "node scripts/verify-claim-tags.mjs",
     "test": "playwright test",
     "test:e2e": "playwright test",
     "verify:paid-checkout": "node scripts/verify-paid-checkout.mjs"

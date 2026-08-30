@@ -40,7 +40,7 @@ declare global {
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const product = 'Change Recovery Ledger';
-const appVersion = '0.1.11';
+const appVersion = '0.1.12';
 const demoKey = 'demo:agent-change-recovery:ledger';
 const releasePage = 'https://github.com/B-Divyesh/sf-agent-change-recovery/releases';
 const releaseCacheKey = `release:agent-change-recovery:${appVersion}`;
@@ -220,7 +220,7 @@ function footer() {
   return `
     <footer class="site-footer">
       <div><strong>Change Recovery Ledger</strong><p class="muted">Reverse selected agent changes without losing the rest.</p><small>Original generated artwork · v${appVersion} · build 2026.08.30</small></div>
-      <nav class="footer-links" aria-label="Footer navigation"><a href="/privacy" data-route>Privacy</a><a href="/terms" data-route>Terms</a><a href="https://sociobot.in" rel="external">Built by Param Factory<span class="sr-only"> (external site)</span></a></nav>
+      <nav class="footer-links" aria-label="Footer navigation"><a href="/privacy" data-route>Privacy</a><a href="/terms" data-route>Terms</a><a href="https://sociobot.in" rel="external" aria-label="Built by Param Factory, external site">Built by Param Factory</a></nav>
     </footer>`;
 }
 
@@ -262,11 +262,11 @@ function retentionOptions() {
 }
 
 function pricingMarkup() {
-  return `<section class="section section-ink" id="pricing"><div class="sheet price-strip"><div><p class="eyebrow">Pro plan</p><h2>Keep more encrypted recovery history</h2><p class="max-text">Pro keeps 30 or 90 local checkpoints, adds team policy notes, and exports password-protected recovery files.</p><p class="price" id="pro-price" hidden></p><p class="muted" id="license-status">${escapeHtml(licenseStatusText())}</p></div><div><div id="checkout-action" aria-live="polite"><span class="muted">Checking whether Pro checkout is available…</span></div><form id="license-form" class="license-form"><label for="license-token">Have a license? Paste it<input id="license-token" name="license" required autocomplete="off" placeholder="sb_license…"></label><button class="secondary" type="submit">Restore license</button></form><p class="field-help">Sociobot is the merchant of record. The free plan still exports standard patches.</p></div></div></section>`;
+  return `<section class="section section-ink" id="pricing"><div class="sheet price-strip"><div><p class="eyebrow">Pro plan</p><h2>Keep more encrypted recovery history</h2><p class="max-text">Pro keeps 30 or 90 local checkpoints, adds team policy notes, and exports password-protected recovery files.</p><p class="price" id="pro-price" hidden></p><p class="muted" id="license-status">${escapeHtml(licenseStatusText())}</p></div><div><div id="checkout-action" aria-live="polite"><span class="muted">Checking whether Pro checkout is available…</span></div><form id="license-form" class="license-form"><label for="license-token">Have a license? Paste it<input id="license-token" name="license" required autocomplete="off" placeholder="sb_license…"></label><button class="secondary" type="submit">Restore license</button></form><p class="field-help">The free plan still exports standard patches.</p></div></div></section>`;
 }
 
 function downloadMarkup(buttonId: string, statusId: string) {
-  return `<a class="button blue" id="${buttonId}" data-download-primary href="${releasePage}">View available downloads</a><div class="macos-downloads" data-macos-downloads hidden><p class="field-help">Choose the build for your Mac.</p><div class="macos-download-actions"><a class="button secondary" data-macos-arm href="${releasePage}">Apple silicon</a><a class="button secondary" data-macos-intel href="${releasePage}">Intel Mac</a></div></div><p id="${statusId}" class="muted">Checking published releases…</p>`;
+  return `<a class="button blue" id="${buttonId}" data-download-primary href="${releasePage}">View available downloads</a><div class="macos-downloads" data-macos-downloads hidden><p class="field-help">Choose the build for your Mac.</p><div class="macos-download-actions"><a class="button secondary" data-macos-arm href="${releasePage}">Download for Apple silicon</a><a class="button secondary" data-macos-intel href="${releasePage}">Download for Intel Mac</a></div></div><p id="${statusId}" class="muted">Checking published releases…</p>`;
 }
 
 function landing() {
@@ -283,9 +283,9 @@ function landing() {
     <section class="section section-blue"><div class="sheet split"><div><p class="eyebrow">Loaded checkpoint preview</p><h2>Inspect an agent turn before reversing it</h2><p class="max-text">Each checkpoint shows the request, commands, files, and check result.</p></div>${previewMarkup()}</div></section>
     <section class="section" id="how"><div class="sheet split"><div><p class="eyebrow">How it works</p><h2>Reverse selected changes in three steps</h2></div><ol class="steps"><li><div><h3>Capture the turn</h3><p>Write the agent’s request and commands. The desktop app records the chosen project.</p></div></li><li><div><h3>Inspect the file group</h3><p>Compare the checkpoint with the current folder. Select only the files that went wrong.</p></div></li><li><div><h3>Reverse or export</h3><p>Create a safety checkpoint, reverse selected files, or export a patch for review. Patches never run themselves.</p></div></li></ol></div></section>
     <section class="section walkthrough"><div class="sheet"><p class="eyebrow">Desktop walkthrough</p><h2>See one selected file reversed</h2><ol class="walkthrough-grid"><li><img src="/assets/walkthrough-1.webp" width="900" height="620" loading="lazy" decoding="async" alt="The sample ledger with one failed session file selected."><strong>1 / Select the suspect file</strong></li><li><img src="/assets/walkthrough-2.webp" width="900" height="426" loading="lazy" decoding="async" alt="A confirmation names the selected files and safety checkpoint."><strong>2 / Confirm the safety checkpoint</strong></li><li><img src="/assets/walkthrough-3.webp" width="900" height="618" loading="lazy" decoding="async" alt="The ledger shows reversed files and a new safety checkpoint."><strong>3 / Keep the recovery record</strong></li></ol></div></section>
-    <section class="section"><div class="sheet split"><div><p class="eyebrow">What stays on your device</p><h2>It does not replace Git</h2></div><div class="max-text"><p>The ledger leaves Git data out of its checkpoints. It records the folder you choose.</p><p>Checkpoint files can contain secrets. A passphrase encrypts every local snapshot and manifest. Delete a local ledger when you no longer need it. This keeps your project files unchanged.</p><p>The demo uses a separate <code>demo:</code> browser storage key. Leaving the demo removes its data.</p></div></div></section>
+    <section class="section"><div class="sheet split"><div><p class="eyebrow">What stays on your device</p><h2>This recovery app does not replace Git</h2></div><div class="max-text"><p>The ledger leaves Git data out of its checkpoints. It records the folder you choose.</p><p>Checkpoint files can contain secrets. A passphrase encrypts every local checkpoint file. Delete a local ledger when you no longer need it. This keeps your project files unchanged.</p><p>The demo uses a separate <code>demo:</code> browser storage key. Leaving the demo removes its data.</p></div></div></section>
     ${pricingMarkup()}
-    <section class="section"><div class="sheet split"><div><p class="eyebrow">Desktop app</p><h2>Choose the build for your computer</h2><p class="max-text">Desktop builds are published for macOS, Windows, and Linux. Check the release notes before installing.</p></div><div>${downloadMarkup('download-button', 'download-status')}</div></div></section>
+    <section class="section"><div class="sheet split"><div><p class="eyebrow">Desktop app</p><h2>Choose the build for your computer</h2><p class="max-text">The current release includes checksum-listed downloads for macOS, Windows, and Linux.</p></div><div>${downloadMarkup('download-button', 'download-status')}</div></div></section>
   </main>${footer()}`;
 }
 
@@ -333,13 +333,13 @@ function realAppPage() {
   const desktop = desktopRuntime;
   const pro = isPro();
   return `${header()}<main id="main" tabindex="-1" class="app-shell"><div class="app-heading"><div><p class="eyebrow">Local project</p><h1>Capture an agent turn</h1></div><span class="chip ${desktop ? 'pass' : 'warn'}">${desktop ? 'Desktop ready' : 'Browser preview'}</span></div>
-    <section class="capture-panel" aria-labelledby="capture-title"><h2 id="capture-title">New checkpoint</h2>${desktop ? '<div class="capture-actions"><button class="secondary" id="load-sample-project" type="button">Load sample project</button><button class="secondary" id="reset-sample-project" type="button">Reset sample project</button><button class="secondary" id="open-local-ledger" type="button">Open local ledger</button>' + (pro ? '<button class="secondary" id="open-encrypted-recovery" type="button">Open encrypted recovery</button>' : '') + '<p class="field-help">The bundled sample is stored separately from projects you choose.</p></div>' : '<p class="notice">Folder access starts in the desktop app. Download it to record a project you choose.</p>'}<form id="capture-form" class="capture-grid"><label>Project folder<input id="project-path" name="path" required placeholder="/Users/me/project" ${desktop ? '' : 'disabled'}><span class="field-help">Type the full path to one local project.</span></label><label>Agent intent<input id="checkpoint-intent" name="intent" required placeholder="Fix session refresh race" ${desktop ? '' : 'disabled'}><span class="field-help">Describe the requested result.</span></label><label>Commands<textarea id="checkpoint-commands" name="commands" rows="2" placeholder="npm test" ${desktop ? '' : 'disabled'}></textarea></label><label>Ledger passphrase<input id="ledger-passphrase" name="passphrase" type="password" minlength="12" required autocomplete="current-password" ${desktop ? '' : 'disabled'}><span class="field-help">Encrypts every local snapshot. It is never saved.</span></label><label>Retention<select id="retention" name="retention" ${desktop ? '' : 'disabled'}>${retentionOptions()}</select><span class="field-help">The oldest checkpoint is pruned safely.</span></label>${pro ? `<label>Team policy note<textarea id="team-policy" name="policy" rows="2" placeholder="Review authentication changes before reversal" ${desktop ? '' : 'disabled'}>${escapeHtml(realPolicy)}</textarea><span class="field-help">Saved in this encrypted local ledger.</span></label>` : '<p class="field-help pro-note">Pro adds 30/90 checkpoint retention and an encrypted team policy note.</p>'}<button class="primary" type="submit" ${desktop ? '' : 'disabled'}>Capture checkpoint</button></form></section>
+    <section class="capture-panel" aria-labelledby="capture-title"><h2 id="capture-title">New checkpoint</h2>${desktop ? '<div class="capture-actions"><button class="secondary" id="load-sample-project" type="button">Load sample project</button><button class="secondary" id="reset-sample-project" type="button">Reset sample project</button><button class="secondary" id="open-local-ledger" type="button">Open local ledger</button>' + (pro ? '<button class="secondary" id="open-encrypted-recovery" type="button">Open encrypted recovery</button>' : '') + '<p class="field-help">The bundled sample is stored separately from projects you choose.</p></div>' : '<p class="notice">Folder access starts in the desktop app. Download it to record a project you choose.</p>'}<form id="capture-form" class="capture-grid"><label>Project folder<input id="project-path" name="path" required placeholder="/Users/me/project" ${desktop ? '' : 'disabled'}><span class="field-help">Type the full path to one local project.</span></label><label>Agent intent<input id="checkpoint-intent" name="intent" required placeholder="Fix session refresh race" ${desktop ? '' : 'disabled'}><span class="field-help">Describe the requested result.</span></label><label>Commands<textarea id="checkpoint-commands" name="commands" rows="2" placeholder="npm test" ${desktop ? '' : 'disabled'}></textarea></label><label>Ledger passphrase<input id="ledger-passphrase" name="passphrase" type="password" minlength="12" required autocomplete="current-password" ${desktop ? '' : 'disabled'}><span class="field-help">Encrypts every local checkpoint file. It is not written to ledger storage or logs.</span></label><label>Retention<select id="retention" name="retention" ${desktop ? '' : 'disabled'}>${retentionOptions()}</select><span class="field-help">Old checkpoints are removed without breaking boundary recovery.</span></label>${pro ? `<label>Team policy note<textarea id="team-policy" name="policy" rows="2" placeholder="Review authentication changes before reversal" ${desktop ? '' : 'disabled'}>${escapeHtml(realPolicy)}</textarea><span class="field-help">Saved in this encrypted local ledger.</span></label>` : '<p class="field-help pro-note">Pro adds 30/90 checkpoint retention and an encrypted team policy note.</p>'}<button class="primary" type="submit" ${desktop ? '' : 'disabled'}>Capture checkpoint</button></form></section>
     <div id="real-ledger">${desktop ? '<div class="empty-state"><div class="empty-mark" aria-hidden="true">＋</div><h2>No project loaded</h2><p>Load the bundled sample or capture an agent turn.</p></div>' : '<div class="empty-state"><div class="empty-mark" aria-hidden="true">⌁</div><h2>Download the desktop app</h2><p>The browser cannot read project folders. The desktop app records only the folder you choose.</p>' + downloadMarkup('app-download-button', 'app-download-status') + '</div>'}</div>
   </main>${footer()}`;
 }
 
 function legalPage(kind: 'privacy' | 'terms') {
-  const privacy = `<p><strong>Effective 29 August 2026.</strong></p><h2>Project data stays local</h2><p>The desktop app reads only the project folder you enter. It does not send project files, patches, commands, or intent notes to us.</p><p>Your ledger passphrase encrypts local snapshots, manifests, retention settings, and policy notes. The passphrase stays in app memory while the ledger is open. It is not written to disk.</p><h2>Demo data is separate</h2><p>The browser demo stores its sample state under <code>${demoKey}</code>. Resetting or leaving the demo removes that state.</p><h2>Download and license checks</h2><p>The landing page asks the GitHub API for current public release files. It asks Sociobot whether Pro checkout is published. It opens hosted checkout only when you select Subscribe to Pro.</p><p>If you restore a license, the app sends that license token to Sociobot only to verify it. The app checks no more than once each day. Project files are never part of that request.</p><h2>Delete your data</h2><p>Open a local ledger in the desktop app. Choose Delete local ledger. This removes local snapshots only. It does not change files in your project folder. You can also clear this site’s browser storage. Contact <a href="mailto:privacy@sociobot.in">privacy@sociobot.in</a> with privacy questions.</p>`;
+  const privacy = `<p><strong>Effective 30 August 2026.</strong></p><h2>Project data stays local</h2><p>The desktop app reads only the project folder you enter. It does not send project files, patches, commands, or request notes to us.</p><p>Your ledger passphrase encrypts local checkpoint files, retention settings, and policy notes. It is not written to ledger storage or logs.</p><h2>Demo data is separate</h2><p>The browser demo stores its sample state under <code>${demoKey}</code>. Resetting or leaving the demo removes that state.</p><h2>Download and license checks</h2><p>The landing page asks the GitHub API for current public release files. It asks Sociobot whether Pro checkout is published. It opens hosted checkout only when you select Subscribe to Pro.</p><p>If you restore a license, the app sends that license token to Sociobot only to verify it. The app checks no more than once each day. Project files are never part of that request.</p><h2>Delete your data</h2><p>Open a local ledger in the desktop app. Choose Delete local ledger. This removes local snapshots only. It does not change files in your project folder. You can also clear this site’s browser storage. Contact <a href="mailto:privacy@sociobot.in">privacy@sociobot.in</a> with privacy questions.</p>`;
   const terms = `<p><strong>Effective 29 August 2026.</strong></p><h2>Use of the app</h2><p>You may use the app to checkpoint folders you are allowed to access. Review every reversal and patch before relying on it.</p><h2>Pro plan</h2><p>Pro adds 30 or 90 checkpoint retention, a local team policy note, and password-protected recovery export.</p><p>The price and purchase action appear only when Sociobot publishes a working checkout. An issued license can be restored on another device.</p><h2>Git and backups</h2><p>The app is not Git and is not a full backup service. Keep normal version control and backups. Git metadata is excluded from checkpoints.</p><h2>Warranty</h2><p>The software is provided under the MIT License, without warranty. You are responsible for reviewing reversed files and exported patches.</p><h2>Contact</h2><p>Send terms questions to <a href="mailto:support@sociobot.in">support@sociobot.in</a>.</p>`;
   const title = kind === 'privacy' ? 'Read the privacy policy' : 'Read the terms of use';
   return `${header()}<main id="main" tabindex="-1" class="sheet legal"><article><p class="eyebrow">${kind}</p><h1>${title}</h1>${kind === 'privacy' ? privacy : terms}</article></main>${footer()}`;
@@ -717,6 +717,31 @@ async function openLocalLedger() {
   }
 }
 
+async function compareWithFolder() {
+  if (!realProjectPath || !activeCheckpoint || !realPassphrase) return;
+  const button = document.querySelector<HTMLButtonElement>('#refresh-checkpoint');
+  if (button) { button.disabled = true; button.textContent = 'Comparing folder…'; }
+  try {
+    const files = await invoke<FileChange[]>('compare_with_folder', {
+      path: realProjectPath,
+      checkpointId: activeCheckpoint,
+      passphrase: realPassphrase
+    });
+    const checkpoint = realLedger.find(item => item.id === activeCheckpoint);
+    if (checkpoint) {
+      checkpoint.files = files;
+      checkpoint.checks = files.length ? `${files.length} current-folder ${files.length === 1 ? 'change' : 'changes'}` : 'Folder matches checkpoint';
+      checkpoint.checkPassed = files.length === 0;
+    }
+    selectedFiles = new Set(files.map(file => file.path));
+    refreshLedgerView();
+    showToast(files.length ? `Found ${files.length} ${files.length === 1 ? 'change' : 'changes'} since this checkpoint.` : 'The current folder matches this checkpoint.');
+  } catch (error) {
+    if (button) { button.disabled = false; button.textContent = 'Compare with folder'; }
+    showToast(`The folder could not be compared. ${String(error)}`);
+  }
+}
+
 function refreshLedgerView() {
   const container = document.querySelector<HTMLDivElement>('#real-ledger');
   if (container) container.innerHTML = ledgerMarkup(realLedger, false);
@@ -781,9 +806,9 @@ async function resolveDownload() {
         const armLink = group.querySelector<HTMLAnchorElement>('[data-macos-arm]')!;
         const intelLink = group.querySelector<HTMLAnchorElement>('[data-macos-intel]')!;
         armLink.href = appleSilicon.browser_download_url;
-        armLink.textContent = 'Apple silicon';
+        armLink.textContent = 'Download for Apple silicon';
         intelLink.href = intel.browser_download_url;
-        intelLink.textContent = 'Intel Mac';
+        intelLink.textContent = 'Download for Intel Mac';
       }
       for (const status of statuses) status.textContent = `${release.tag_name} · Choose Apple silicon or Intel.`;
       return;
@@ -886,6 +911,7 @@ document.addEventListener('click', event => {
   if (target.closest('#load-sample-project')) void loadBundledSample();
   if (target.closest('#reset-sample-project')) void loadBundledSample(true);
   if (target.closest('#open-local-ledger')) void openLocalLedger();
+  if (target.closest('#refresh-checkpoint')) void compareWithFolder();
   if (target.closest('#select-all')) {
     const ledger = currentPath() === '/demo' ? getDemoLedger() : realLedger;
     const cp = ledger.find(item => item.id === activeCheckpoint);

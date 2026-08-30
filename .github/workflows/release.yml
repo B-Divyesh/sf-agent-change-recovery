@@ -54,7 +54,7 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: Change Recovery Ledger v__VERSION__
-          releaseBody: Local checkpoints and selective recovery for agent changes. These v0.1 builds are unsigned unless signing secrets are configured.
+          releaseBody: Local checkpoints and selective recovery for agent changes. Verify every download against SHA256SUMS.
           releaseDraft: false
           prerelease: false
           args: --target ${{ matrix.target }}
@@ -93,8 +93,19 @@ jobs:
           test "${#appimages[@]}" -eq 1
           scripts/smoke-appimage.sh "${appimages[0]}"
 
+  windows-installer-consumer:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute verified install, mismatch rejection, and app launch smoke
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: scripts/windows-consumer-proof.ps1
+
   manifests:
-    needs: [build, linux-appimage-smoke]
+    needs: [build, linux-appimage-smoke, windows-installer-consumer]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

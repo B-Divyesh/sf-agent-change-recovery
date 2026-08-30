@@ -6,7 +6,7 @@ Change Recovery Ledger is a local desktop app for developers supervising long ag
 It records the request, commands, files, and check result for each checkpoint.
 Reverse selected files after a safety checkpoint, or export a patch for review.
 Patches never run themselves.
-Every desktop ledger uses a passphrase to encrypt snapshots, manifests, and retention settings on disk.
+Every desktop ledger uses a passphrase to encrypt checkpoint files and retention settings on disk.
 
 Use the one-click sample at [agent-change-recovery.sociobot.in/?demo=1](https://agent-change-recovery.sociobot.in/?demo=1).
 It uses separate browser storage and removes sample changes when you leave.
@@ -14,10 +14,11 @@ It uses separate browser storage and removes sample changes when you leave.
 ## What it does
 
 - Records only the project folder you choose.
-- Encrypts snapshots, manifests, retention settings, and Pro policy notes locally.
+- Encrypts checkpoint files, retention settings, and Pro policy notes locally.
 - Skips `.git`, `node_modules`, `target`, and `dist` folders.
 - Skips files over 2 MB.
 - Compares each checkpoint with the previous checkpoint.
+- Compares a saved checkpoint with the current project folder.
 - Lets you retain 2 or 7 recent checkpoints on the free plan, or 30 or 90 with Pro.
 - Creates a safety checkpoint before a selected-file reversal.
 - Exports a standard unified patch without applying it.
@@ -52,18 +53,18 @@ Choose **Load sample project** to try a disposable bundled project.
 Choose **Reset sample project** to recreate it.
 The desktop app never needs access to a real folder for that sample.
 Enter a 12-character-or-longer local ledger passphrase before loading or opening a ledger.
-The app keeps that passphrase only in memory while the ledger is open.
+The app does not write that passphrase to ledger storage or logs.
 
 ## Pro plan
 
 Pro adds 30 or 90 checkpoint retention, an encrypted local team policy note, and password-protected recovery export.
-The free plan remains useful: it keeps 2 or 7 checkpoints and exports standard patches.
+The free plan keeps 2 or 7 checkpoints and exports standard patches.
 The published Pro plan costs $15 per developer each month.
 
 Choose **Have a license? Paste it** to restore a purchase on another device.
 The price and **Subscribe to Pro** action appear only after Sociobot publishes a working checkout.
-The app verifies a saved license with Sociobot at most once each day and never sends project files with that request.
-When checkout is available, Sociobot and Dodo are the merchant of record.
+The app verifies a saved license with Sociobot at most once each day.
+It never sends project files with that request.
 
 ## Install a release
 
@@ -80,9 +81,8 @@ irm https://agent-change-recovery.sociobot.in/install.ps1 | iex
 ```
 
 The Linux and Windows scripts verify the published SHA-256 checksum first.
-macOS builds are unsigned during this release phase. The shell installer picks the matching Apple silicon or Intel disk image.
+On macOS, the shell installer picks and verifies the matching Apple silicon or Intel disk image.
 Open the disk image, then move the app to Applications.
-For an unsigned build, Control-click the app and choose **Open**.
 
 ## Test and build
 
@@ -95,16 +95,17 @@ npm run build
 `npm test` runs browser claims, routing, accessibility, mobile, privacy, and installer checks.
 `npm run build` writes the static deployment output to `dist/site`.
 
-The release workflow builds desktop packages on macOS, Windows, and Linux runners.
-Tag `v0.1.11` or later to start that workflow.
-It publishes checksums and a release manifest with the desktop files.
+The current release includes checksum-listed desktop downloads for macOS, Windows, and Linux.
+Tag `v0.1.12` or later to start the release workflow.
+The workflow publishes checksums and a release manifest with the desktop files.
 Before the workflow passes, it verifies the exact tag, all desktop files, `SHA256SUMS`, and `latest.json` from the published release.
 It also opens the Linux AppImage on Ubuntu 24.04 and rejects host-library module errors.
 
 ## Privacy
 
 Project contents stay in the desktop app and encrypted ledger storage.
-Before a visitor starts checkout, the browser landing page asks GitHub for current public release filenames and Sociobot whether Pro checkout is published.
+Before checkout, the landing page asks GitHub for release filenames.
+It asks Sociobot whether Pro checkout is published.
 It opens hosted checkout only after the visitor selects **Subscribe to Pro**.
 See the in-product [privacy policy](https://agent-change-recovery.sociobot.in/privacy) and [terms](https://agent-change-recovery.sociobot.in/terms).
 

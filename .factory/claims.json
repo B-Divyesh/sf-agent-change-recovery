@@ -21,6 +21,13 @@
     "sandbox": "fresh browser demo; mutate sample; reset and exit; assert only demo-prefixed storage is removed"
   },
   {
+    "id": "one-click-demo",
+    "claim": "One click opens a populated sample recovery without setup.",
+    "where": "README and landing first screen",
+    "test": "npm test -- --grep @claim:one-click-demo",
+    "sandbox": "fresh landing page; click the primary action once; assert the demo banner, four checkpoints, failed check, request, files, and recovery actions"
+  },
+  {
     "id": "offline-reload",
     "claim": "The demo works offline after one visit.",
     "where": "landing facts",
@@ -52,15 +59,15 @@
     "id": "local-privacy",
     "claim": "Project contents stay on this device.",
     "where": "landing facts, privacy policy, README",
-    "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_local_privacy",
-    "sandbox": "native fixture; capture unique chosen-folder data beside a sentinel and assert no outside or local network access"
+    "test": "scripts/test-native-privacy.sh",
+    "sandbox": "native capture with unique contents, path, request, and command under strace network-syscall recording; assert zero network syscalls and no outside-folder content"
   },
   {
     "id": "local-encryption",
-    "claim": "Project snapshots and manifests are encrypted locally with a ledger passphrase that is not stored.",
+    "claim": "Local checkpoint files are encrypted with a ledger passphrase that is not written to ledger storage or logs.",
     "where": "landing facts, desktop capture form, privacy policy, README",
     "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_local_encryption",
-    "sandbox": "native fixture; capture a unique secret; inspect every ledger file for its absence; reopen the encrypted snapshot with the passphrase"
+    "sandbox": "native fixture; capture with unique content and passphrase; inspect all app-data files for both values; reject a wrong passphrase and require re-entry to reopen"
   },
   {
     "id": "retention-settings-encryption",
@@ -147,6 +154,13 @@
     "sandbox": "native fixture; make three captures and assert each delta uses the prior snapshot"
   },
   {
+    "id": "current-folder-comparison",
+    "claim": "Compare a saved checkpoint with the current project folder.",
+    "where": "landing how-it-works section and desktop Compare with folder action",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_current_folder_comparison_reads_the_live_folder && npm test -- --grep @ui:current-folder-comparison",
+    "sandbox": "native fixture plus packaged-bridge UI; mutate the live folder, invoke Compare with folder, and assert command arguments plus visible paths, diffs, and status"
+  },
+  {
     "id": "reversible-safety-checkpoint",
     "claim": "Creates a safety checkpoint before a selected-file reversal.",
     "where": "landing page, demo recovery dialog, README",
@@ -199,21 +213,21 @@
     "id": "windows-installer",
     "claim": "The Windows installer verifies a release checksum before starting the installer.",
     "where": "README Windows install command",
-    "test": "npm test -- --grep @claim:windows-installer",
-    "sandbox": "static installer contract; assert Get-FileHash comparison occurs before Start-Process"
+    "test": "node scripts/verify-windows-consumer-proof.mjs",
+    "sandbox": "published candidate proof from windows-latest; run the shipped script against the real installer, assert one verified start and zero starts after a forced checksum mismatch"
   },
   {
-    "id": "unsigned-macos",
-    "claim": "macOS builds are unsigned during this release phase.",
-    "where": "README install instructions",
-    "test": "npm test -- --grep @claim:unsigned-macos",
-    "sandbox": "release workflow fixture; assert the macOS build has no signing certificate or notarization step"
+    "id": "macos-installer",
+    "claim": "The shell installer selects and verifies the matching Apple silicon or Intel disk image.",
+    "where": "README macOS install instructions",
+    "test": "npm test -- --grep @claim:macos-installer",
+    "sandbox": "mock uname as arm64 and x86_64; execute install.sh; assert each exact disk image is downloaded and checksum-verified"
   },
   {
     "id": "release-platforms",
-    "claim": "The release workflow builds desktop packages on macOS, Windows, and Linux runners.",
+    "claim": "The current release includes checksum-listed desktop downloads for macOS, Windows, and Linux.",
     "where": "landing download section and README",
-    "test": "npm test -- --grep @claim:release-platforms",
-    "sandbox": "workflow fixture; assert required runner matrix and release artifact manifest steps"
+    "test": "node scripts/verify-published-release.mjs",
+    "sandbox": "GitHub candidate release tied to this source version; download one macOS, Windows, and Linux artifact plus SHA256SUMS/latest.json and verify every digest and manifest entry"
   }
 ]
