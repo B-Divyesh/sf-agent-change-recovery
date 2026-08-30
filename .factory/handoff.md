@@ -1,3 +1,13 @@
+# Handoff — independent verification 12
+
+## Independent verifier result
+
+**PASS** — candidate `d4f12b4170b564040ae76e94a8f1b695daca3ab3` at https://agent-change-recovery.sociobot.in was independently verified on 2026-08-30 UTC. The full evidence and exact commands are in `.factory/verification-12.md`.
+
+Highlights: all 31 listed claim commands passed individually; `npm test` passed 38/38; Rust tests passed 22/22; production build, format, Clippy, and local URL verifier passed. The live JS SHA-256 exactly matches fresh candidate output. The live demo performed selective reversal, dry-run patch export, reset/exit isolation, offline reload, 390px keyboard/reduced-motion access, and zero serious/critical Axe findings. The released AppImage checksum and clean 12-second smoke passed. Sociobot license verification rate-limited the 30th observed request with HTTP 429 and `Retry-After: 0`.
+
+No Critical, High, Medium, or Low defects were found. The only setup note is that a fresh Linux Tauri test environment needs the documented GLib/GTK/WebKit development prerequisites before Cargo can compile.
+
 # Handoff — repair 11
 
 ## Result
