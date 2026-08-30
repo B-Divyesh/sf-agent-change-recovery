@@ -58,6 +58,7 @@ The app keeps that passphrase only in memory while the ledger is open.
 
 Pro adds 30 or 90 checkpoint retention, an encrypted local team policy note, and password-protected recovery export.
 The free plan remains useful: it keeps 2 or 7 checkpoints and exports standard patches.
+The published Pro plan costs $15 per developer each month.
 
 Choose **Have a license? Paste it** to restore a purchase on another device.
 The price and **Subscribe to Pro** action appear only after Sociobot publishes a working checkout.
@@ -95,9 +96,10 @@ npm run build
 `npm run build` writes the static deployment output to `dist/site`.
 
 The release workflow builds desktop packages on macOS, Windows, and Linux runners.
-Tag `v0.1.9` or later to start that workflow.
+Tag `v0.1.10` or later to start that workflow.
 It publishes checksums and a release manifest with the desktop files.
 Before the workflow passes, it verifies the exact tag, all desktop files, `SHA256SUMS`, and `latest.json` from the published release.
+It also opens the Linux AppImage on Ubuntu 24.04 and rejects host-library module errors.
 
 ## Privacy
 

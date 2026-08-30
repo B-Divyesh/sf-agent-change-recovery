@@ -35,6 +35,13 @@
     "sandbox": "fresh landing with a mocked unpublished Sociobot catalog; restore an issued license and assert active Pro status with no purchase link"
   },
   {
+    "id": "pro-price",
+    "claim": "When the published Sociobot catalog lists Pro, the app shows its exact $15 per developer monthly price.",
+    "where": "landing facts, Pro section, brief, and README",
+    "test": "npm test -- --grep @claim:pro-price",
+    "sandbox": "fresh browser landing with a recorded published catalog entry; assert the visible $15 monthly price and exact checkout link without opening checkout"
+  },
+  {
     "id": "license-daily-verification",
     "claim": "The app verifies a saved Sociobot license no more than once each day.",
     "where": "privacy policy and README",
@@ -68,6 +75,13 @@
     "where": "desktop capture form and README",
     "test": "cargo test --manifest-path src-tauri/Cargo.toml claim_retention_prunes_old_checkpoints_and_keeps_boundary_recovery",
     "sandbox": "native fixture; retain two checkpoints, create three, and reverse the oldest retained change using its encrypted baseline"
+  },
+  {
+    "id": "retention-tiers",
+    "claim": "Free offers 2 or 7 checkpoint retention; Pro adds 30 or 90 checkpoint retention.",
+    "where": "landing Pro section, desktop capture form, terms, and README",
+    "test": "npm test -- --grep @claim:retention-tiers",
+    "sandbox": "fresh app route; assert the exact 2, 7, 30, and 90 options, with Pro choices disabled on Free and enabled by a recorded valid cached license"
   },
   {
     "id": "team-policy-note",

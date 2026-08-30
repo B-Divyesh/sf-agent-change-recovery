@@ -144,7 +144,7 @@ test('@claim:pro-license restores an issued Sociobot license without exposing an
   expect(requests).toHaveLength(2);
 });
 
-test('checkout availability uses the public catalog without opening payment before the visitor clicks', async ({ page, context }) => {
+test('@claim:pro-price checkout availability shows the published $15 monthly price without opening payment', async ({ page, context }) => {
   let listed = false;
   let checkoutRequests = 0;
   await context.route(billingCatalogUrl, route => route.fulfill({ json: {
@@ -165,6 +165,78 @@ test('checkout availability uses the public catalog without opening payment befo
   await expect(page.getByRole('link', { name: /subscribe to pro/i })).toHaveAttribute('href', checkoutUrl);
   await expect(page.locator('#pro-price')).toContainText('$15');
   expect(checkoutRequests).toBe(0);
+});
+
+test('packaged Tauri billing uses native commands when browser CORS is unavailable', async ({ page, context }) => {
+  await context.addInitScript(({ checkout }) => {
+    const calls: { command: string; args: unknown }[] = [];
+    (window as typeof window & { isTauri: boolean; __nativeBillingCalls: typeof calls }).isTauri = true;
+    (window as typeof window & { __nativeBillingCalls: typeof calls }).__nativeBillingCalls = calls;
+    (window as typeof window & { __TAURI_INTERNALS__: { invoke: (command: string, args: unknown) => Promise<unknown> } }).__TAURI_INTERNALS__ = {
+      invoke: async (command, args) => {
+        calls.push({ command, args });
+        if (command === 'get_product_listing') return {
+          slug: 'agent-change-recovery',
+          checkout_url: checkout,
+          price_minor: 1500,
+          currency: 'USD'
+        };
+        if (command === 'verify_license') return { valid: true, reason: 'ok', expires_at: null };
+        throw new Error(`Unexpected native command: ${command}`);
+      }
+    };
+  }, { checkout: checkoutUrl });
+  const browserBillingRequests: string[] = [];
+  page.on('request', request => {
+    if (request.url().startsWith('https://api.sociobot.in/api/v1/')) browserBillingRequests.push(request.url());
+  });
+
+  await page.goto('/?license=sbk-native-recorded');
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByText('Pro license active on this device.')).toBeVisible();
+  await expect(page.getByRole('link', { name: /subscribe to pro/i })).toHaveAttribute('href', checkoutUrl);
+  await expect(page.locator('#pro-price')).toContainText('$15');
+  expect(browserBillingRequests).toEqual([]);
+  const calls = await page.evaluate(() => (window as typeof window & { __nativeBillingCalls: { command: string; args: unknown }[] }).__nativeBillingCalls);
+  expect(calls.some(call => call.command === 'get_product_listing')).toBe(true);
+  expect(calls.filter(call => call.command === 'verify_license')).toEqual([{
+    command: 'verify_license',
+    args: { license: 'sbk-native-recorded' }
+  }]);
+});
+
+test('@claim:retention-tiers exposes 2 and 7 free checkpoints and 30 and 90 Pro checkpoints', async ({ page }) => {
+  await page.goto('/app');
+  const freeOptions = await page.locator('#retention option').evaluateAll(options => options.map(option => ({
+    value: (option as HTMLOptionElement).value,
+    label: option.textContent,
+    disabled: (option as HTMLOptionElement).disabled
+  })));
+  expect(freeOptions).toEqual([
+    { value: '2', label: 'Keep 2 checkpoints', disabled: false },
+    { value: '7', label: 'Keep 7 checkpoints', disabled: false },
+    { value: '30', label: 'Keep 30 checkpoints (Pro)', disabled: true },
+    { value: '90', label: 'Keep 90 checkpoints (Pro)', disabled: true }
+  ]);
+
+  await page.evaluate(() => {
+    localStorage.setItem('sb_license:agent-change-recovery', 'sbk-cached-pro');
+    localStorage.setItem('sb_license:agent-change-recovery:verification', JSON.stringify({
+      checkedAt: Date.now(),
+      verdict: { valid: true, reason: 'ok', expires_at: null }
+    }));
+  });
+  await page.reload();
+  const proOptions = await page.locator('#retention option').evaluateAll(options => options.map(option => ({
+    value: (option as HTMLOptionElement).value,
+    disabled: (option as HTMLOptionElement).disabled
+  })));
+  expect(proOptions).toEqual([
+    { value: '2', disabled: false },
+    { value: '7', disabled: false },
+    { value: '30', disabled: false },
+    { value: '90', disabled: false }
+  ]);
 });
 
 test('@claim:license-daily-verification checks a saved license once per day', async ({ page }) => {
@@ -190,7 +262,7 @@ test('service worker installs the shipped shell, updates its cache, and keeps th
     const registration = await navigator.serviceWorker.getRegistration();
     await registration?.update();
     const keys = await caches.keys();
-    const cache = await caches.open('recovery-ledger-v7');
+    const cache = await caches.open('recovery-ledger-v8');
     return {
       active: registration?.active?.state,
       script: registration?.active?.scriptURL,
@@ -201,7 +273,7 @@ test('service worker installs the shipped shell, updates its cache, and keeps th
   });
   expect(installed.active).toBe('activated');
   expect(installed.script).toContain('/sw.js');
-  expect(installed.keys).toContain('recovery-ledger-v7');
+  expect(installed.keys).toContain('recovery-ledger-v8');
   expect(installed.cachedDemo).toBe(true);
   expect(installed.cachedShell).toBe(true);
   await context.setOffline(true);
@@ -466,12 +538,20 @@ test('@claim:release-candidate-identity rejects a stale release and validates a 
 test('Linux AppImage packaging installs its required tool and verifies the generated asset', () => {
   const workflow = readFileSync('.github/workflows/release.yml', 'utf8');
   const helper = readFileSync('scripts/prepare-linuxdeploy-plugin.mjs', 'utf8');
+  const smoke = readFileSync('scripts/smoke-appimage.sh', 'utf8');
   expect(workflow).toContain('file libwebkit2gtk-4.1-dev');
   expect(workflow).toContain('Prepare the pinned Linuxdeploy GTK helper');
   expect(workflow).toContain('Verify Linux installers');
+  expect(workflow).toContain('runs-on: ubuntu-24.04');
+  expect(workflow).toContain('scripts/smoke-appimage.sh');
+  expect(workflow).not.toContain('GITHUB_REF_NAME');
   expect(workflow).toContain('bundle/appimage/*.AppImage');
   expect(helper).toContain('cb379f9b0733e9ad9f8bd78f8c2fa038aef2478523bb7d4c8e64ff6a1ea3501a');
   expect(helper).toContain('ln $verbose -s -f');
+  expect(helper).toContain('GSETTINGS_BACKEND=memory');
+  expect(helper).toContain('giomoduledir');
+  expect(helper).toContain('bundled GIO library still references host modules');
+  expect(smoke).toContain("undefined symbol|Failed to load module|error while loading shared libraries");
 });
 
 test('@claim:linux-installer verifies, installs, and makes the AppImage executable', async () => {

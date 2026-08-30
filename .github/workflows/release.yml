@@ -73,8 +73,28 @@ jobs:
           test "${#rpms[@]}" -eq 1
           dpkg-deb --info "${debs[0]}" >/dev/null
 
-  manifests:
+  linux-appimage-smoke:
     needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install AppImage smoke dependencies
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libfuse2 xvfb
+      - name: Download and smoke-test the published AppImage
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="v$(node -p "require('./package.json').version")"
+          mkdir smoke-assets
+          gh release download "$tag" --pattern '*.AppImage' --dir smoke-assets
+          appimages=(smoke-assets/*.AppImage)
+          test "${#appimages[@]}" -eq 1
+          scripts/smoke-appimage.sh "${appimages[0]}"
+
+  manifests:
+    needs: [build, linux-appimage-smoke]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -82,24 +102,29 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          tag="v$(node -p "require('./package.json').version")"
           mkdir release-assets
-          gh release download "${GITHUB_REF_NAME}" --dir release-assets
+          gh release download "$tag" --dir release-assets
       - name: Write checksums and release manifest
         run: |
+          tag="v$(node -p "require('./package.json').version")"
           cd release-assets
           rm -f SHA256SUMS latest.json
           sha256sum * > SHA256SUMS
-          python3 ../scripts/release-manifest.py "${GITHUB_REF_NAME}" > latest.json
+          python3 ../scripts/release-manifest.py "$tag" > latest.json
       - name: Upload metadata
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${GITHUB_REF_NAME}" release-assets/SHA256SUMS release-assets/latest.json --clobber
+        run: |
+          tag="v$(node -p "require('./package.json').version")"
+          gh release upload "$tag" release-assets/SHA256SUMS release-assets/latest.json --clobber
       - name: Verify published release identity
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          tag="v$(node -p "require('./package.json').version")"
           mkdir verified-assets
-          gh release download "${GITHUB_REF_NAME}" --dir verified-assets --clobber
-          gh release view "${GITHUB_REF_NAME}" --json tagName,targetCommitish,assets > release.json
-          python3 scripts/verify-release.py "${GITHUB_REF_NAME}" "${GITHUB_SHA}" release.json verified-assets
+          gh release download "$tag" --dir verified-assets --clobber
+          gh release view "$tag" --json tagName,targetCommitish,assets > release.json
+          python3 scripts/verify-release.py "$tag" "${GITHUB_SHA}" release.json verified-assets

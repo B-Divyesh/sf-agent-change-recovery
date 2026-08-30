@@ -1,4 +1,4 @@
-# Copy audit — 2026-08-29 repair 9
+# Copy audit — 2026-08-30 repair 11
 
 ## Landing copy
 
@@ -12,6 +12,7 @@
 | 5 | Project files are encrypted locally. |
 | 8 | The demo works offline after one visit. |
 | 6 | Checking whether Pro checkout is available. |
+| 7 | Pro costs $15 per developer each month. |
 | 7 | Inspect an agent turn before reversing it |
 | 10 | Each checkpoint shows the request, commands, files, and check result. |
 | 6 | Reverse selected changes in three steps |
@@ -36,13 +37,24 @@
 | 5 | Pro checkout is being enabled. |
 | 5 | Your free ledger keeps working. |
 | 7 | Check back when the price is published. |
+| 7 | Pro checkout is not available yet. |
 | 6 | Sociobot is the merchant of record. |
 | 7 | The free plan still exports standard patches. |
 | 7 | Choose the build for your computer |
 | 13 | Desktop builds are published for macOS, Windows, and Linux. |
 | 7 | Check the release notes before installing. |
 
-All landing sentences are at or below 22 words. The first screen names the task, audience, primary action, outcome, privacy, offline demo, and live checkout state. The exact Pro price appears only after the public catalog and checkout endpoint both confirm it.
+All landing sentences are at or below 22 words. The first screen names the task, audience, primary action, outcome, privacy, offline demo, and live checkout state. The exact Pro price appears only after the public catalog confirms it.
+
+## App copy added to the audit
+
+| Words | Copy |
+| ---: | --- |
+| 7 | Free plan: retain 2 or 7 checkpoints. |
+| 5 | Pro: retain 30 or 90. |
+| 7 | Pro costs $15 per developer each month. |
+
+These plan and price sentences are at or below 22 words.
 
 ## Terminology
 

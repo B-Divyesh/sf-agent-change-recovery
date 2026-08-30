@@ -32,6 +32,9 @@ const FREE_RETENTION_MAX: usize = 7;
 const PRO_RETENTION_MAX: usize = 90;
 const STORAGE_MAGIC: &[u8; 4] = b"LGR2";
 const KEY_CHECK: &[u8] = b"change-recovery-ledger-key-check-v1";
+const PRODUCT_CATALOG_URL: &str = "https://api.sociobot.in/api/v1/products";
+const LICENSE_VERIFY_URL: &str =
+    "https://api.sociobot.in/api/v1/products/agent-change-recovery/verify";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -105,11 +108,24 @@ struct LedgerResponse {
     policy: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct LicenseVerdict {
     valid: bool,
     reason: String,
     expires_at: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct ProductListing {
+    slug: String,
+    checkout_url: String,
+    price_minor: u64,
+    currency: String,
+}
+
+#[derive(Deserialize)]
+struct ProductCatalog {
+    data: Vec<ProductListing>,
 }
 
 fn now_id() -> String {
@@ -1409,34 +1425,63 @@ fn import_encrypted_recovery(
     Ok(target.to_string_lossy().into_owned())
 }
 
+fn billing_client() -> Result<reqwest::blocking::Client, String> {
+    reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .user_agent("Change-Recovery-Ledger/desktop")
+        .build()
+        .map_err(|_| {
+            "The Sociobot billing request could not start. Try again when you are online."
+                .to_string()
+        })
+}
+
+fn get_product_listing_from(endpoint: &str) -> Result<Option<ProductListing>, String> {
+    let endpoint = reqwest::Url::parse(endpoint)
+        .map_err(|_| "The product catalog address is invalid.".to_string())?;
+    let response = billing_client()?.get(endpoint).send().map_err(|_| {
+        "The product catalog is unavailable. Try again when you are online.".to_string()
+    })?;
+    if !response.status().is_success() {
+        return Err("The product catalog is unavailable. Try again later.".into());
+    }
+    let catalog = response
+        .json::<ProductCatalog>()
+        .map_err(|_| "The product catalog returned an unreadable response.".to_string())?;
+    Ok(catalog
+        .data
+        .into_iter()
+        .find(|product| product.slug == "agent-change-recovery"))
+}
+
 #[tauri::command]
-fn verify_license(license: String) -> Result<LicenseVerdict, String> {
+fn get_product_listing() -> Result<Option<ProductListing>, String> {
+    get_product_listing_from(PRODUCT_CATALOG_URL)
+}
+
+fn verify_license_from(endpoint: &str, license: &str) -> Result<LicenseVerdict, String> {
     if license.trim().is_empty() {
         return Err("Paste a Sociobot license before verifying it.".into());
     }
-    let mut endpoint =
-        reqwest::Url::parse("https://api.sociobot.in/api/v1/products/agent-change-recovery/verify")
-            .map_err(|_| "The license verification address is invalid.".to_string())?;
+    let mut endpoint = reqwest::Url::parse(endpoint)
+        .map_err(|_| "The license verification address is invalid.".to_string())?;
     endpoint
         .query_pairs_mut()
         .append_pair("license", license.trim());
-    let response = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(10))
-        .build()
-        .map_err(|_| {
-            "License verification could not start. Try again when you are online.".to_string()
-        })?
-        .get(endpoint)
-        .send()
-        .map_err(|_| {
-            "License verification is unavailable. Try again when you are online.".to_string()
-        })?;
+    let response = billing_client()?.get(endpoint).send().map_err(|_| {
+        "License verification is unavailable. Try again when you are online.".to_string()
+    })?;
     if !response.status().is_success() {
         return Err("License verification is unavailable. Try again later.".into());
     }
     response
         .json::<LicenseVerdict>()
         .map_err(|_| "The license service returned an unreadable response.".to_string())
+}
+
+#[tauri::command]
+fn verify_license(license: String) -> Result<LicenseVerdict, String> {
+    verify_license_from(LICENSE_VERIFY_URL, &license)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -1449,6 +1494,7 @@ pub fn run() {
             export_patch,
             export_encrypted,
             import_encrypted_recovery,
+            get_product_listing,
             verify_license,
             delete_ledger,
             load_sample_project
@@ -1461,12 +1507,42 @@ pub fn run() {
 mod tests {
     use super::*;
     use std::{
-        io::Write,
+        io::{Read, Write},
         net::TcpListener,
         process::{Command, Stdio},
+        thread,
     };
 
     const TEST_PASSPHRASE: &str = "correct horse battery staple";
+
+    fn serve_recorded_json(body: &'static str) -> (String, thread::JoinHandle<String>) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let handle = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut request = Vec::new();
+            let mut buffer = [0_u8; 2048];
+            loop {
+                let count = stream.read(&mut buffer).unwrap();
+                if count == 0 {
+                    break;
+                }
+                request.extend_from_slice(&buffer[..count]);
+                if request.windows(4).any(|part| part == b"\r\n\r\n") {
+                    break;
+                }
+            }
+            write!(
+                stream,
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                body.len(),
+                body
+            )
+            .unwrap();
+            String::from_utf8(request).unwrap()
+        });
+        (format!("http://{address}"), handle)
+    }
 
     fn test_crypto(store: &Path) -> LedgerCrypto {
         open_ledger_store(store, TEST_PASSPHRASE, Some(FREE_RETENTION_MAX), false)
@@ -1617,6 +1693,46 @@ mod tests {
         assert!(
             matches!(listener.accept(), Err(error) if error.kind() == std::io::ErrorKind::WouldBlock)
         );
+    }
+
+    #[test]
+    fn packaged_billing_uses_native_http_without_a_web_origin() {
+        let catalog_json = include_str!("../../tests/fixtures/sociobot-product-catalog.json");
+        let (catalog_origin, catalog_request) = serve_recorded_json(catalog_json);
+        let product = get_product_listing_from(&format!("{catalog_origin}/api/v1/products"))
+            .unwrap()
+            .unwrap();
+        assert_eq!(product.slug, "agent-change-recovery");
+        assert_eq!(product.price_minor, 1500);
+        assert_eq!(product.currency, "USD");
+        assert_eq!(
+            product.checkout_url,
+            "https://api.sociobot.in/api/v1/products/agent-change-recovery/checkout"
+        );
+        let request = catalog_request.join().unwrap();
+        assert!(request.starts_with("GET /api/v1/products HTTP/1.1\r\n"));
+        assert!(!request.to_ascii_lowercase().contains("\r\norigin:"));
+
+        let verdict_json = include_str!("../../tests/fixtures/sociobot-license-valid.json");
+        let (verify_origin, verify_request) = serve_recorded_json(verdict_json);
+        let verdict = verify_license_from(
+            &format!("{verify_origin}/api/v1/products/agent-change-recovery/verify"),
+            "sbk-recorded+license",
+        )
+        .unwrap();
+        assert_eq!(
+            verdict,
+            LicenseVerdict {
+                valid: true,
+                reason: "ok".into(),
+                expires_at: None,
+            }
+        );
+        let request = verify_request.join().unwrap();
+        assert!(request.starts_with(
+            "GET /api/v1/products/agent-change-recovery/verify?license=sbk-recorded%2Blicense HTTP/1.1\r\n"
+        ));
+        assert!(!request.to_ascii_lowercase().contains("\r\norigin:"));
     }
 
     #[test]

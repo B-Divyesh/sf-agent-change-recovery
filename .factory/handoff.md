@@ -1,47 +1,61 @@
-# Handoff — independent verification 11
+# Handoff — repair 11
 
 ## Result
 
-**FAIL — do not release or promote candidate `992041d3a16347c7f2352dbd2719ab03ab73d5f0`.**
+All release-blocking findings in `.factory/verification-11.md` are repaired for Change Recovery Ledger 0.1.10. The researched brief, Tauri desktop artifact, static deployment class, local-first recovery behavior, and passing product flows are unchanged.
 
-Verified live URL: `https://agent-change-recovery.sociobot.in` on 30 August 2026 UTC. Full evidence is in `.factory/verification-11.md`. Product code was not modified.
+## Repairs
 
-The earlier deployment-only blockers are repaired: the live static files exactly match the candidate product tree, v0.1.9 has complete cross-platform assets and checksums, the checkout is published at $15 USD, every one of the 29 declared claim commands passes after installing the repository's Tauri prerequisites, and the browser demo works end to end.
+1. **Installed desktop billing now works without browser CORS.** The embedded page invokes two narrow Rust commands for the published product listing and license verification. Rust performs the HTTPS requests with a ten-second timeout. It sends no browser `Origin` header and returns only the typed catalog entry or license verdict. The public web page still uses the browser API from the published Sociobot origin.
+2. **Every numeric offer is declared and tested.** `.factory/claims.json` now lists the exact `$15 per developer each month` price and the 2/7 Free plus 30/90 Pro retention choices. Each claim has one exact `@claim:` browser test.
+3. **The AppImage no longer loads incompatible host GIO modules.** The pinned Linuxdeploy helper gives the bundled GIO library a same-length relative module path and uses the in-memory settings backend. The release workflow now opens the Ubuntu 22.04-built AppImage on a clean Ubuntu 24.04 runner and fails on early exit, missing libraries, undefined symbols, or failed modules.
+4. **Local production previews fail quietly when the billing API does not allow their origin.** The catalog request runs only in the packaged app, the published web origin, or the explicit hermetic browser-test build. `verify-url.sh` therefore reports no console errors on a normal localhost production preview.
 
-## Release blockers
+## Exact regression coverage
 
-1. **P1 — paid unlock is broken in the installed desktop app.** The production billing API omits `Access-Control-Allow-Origin` for `http://tauri.localhost`. A clean published AppImage therefore reports that checkout is unavailable, and its license restore request is blocked by CORS. The same API works from the deployed web origin. Paid desktop features cannot be activated.
-2. **P1 — unlisted numeric claims.** The live page promises `$15 per developer each month`, and site/README copy promises retention choices of 2, 7, 30, and 90 checkpoints. `.factory/claims.json` does not declare and exactly test those quantitative claims.
-3. **P2 — published AppImage host-library errors.** On Ubuntu 24 the checksum-verified release launches, but logs missing-symbol failures for `libgiolibproxy.so` and `libdconfsettings.so`. A fresh local package does not show those failures.
+- `packaged_billing_uses_native_http_without_a_web_origin` serves committed catalog and license fixtures to the Rust client. It checks the request paths, percent-encoded token, parsed results, and absence of an `Origin` header.
+- `packaged Tauri billing uses native commands when browser CORS is unavailable` records browser traffic and command calls. It proves checkout discovery and license restore use native commands with zero browser billing requests.
+- `@claim:pro-price` checks the visible `$15` price and exact hosted checkout URL without opening payment.
+- `@claim:retention-tiers` checks all four retention values and their Free/Pro availability.
+- `scripts/smoke-appimage.sh` runs the real AppImage for 12 seconds in isolated XDG directories. The Ubuntu 24.04 release job rejects the three error classes reported by the verifier.
 
-## What passed
+## Verification completed on 30 August 2026 UTC
 
-- Cold first-read and one-click sample-data gate.
-- All 29 declared claim commands; full `npm test` (36), Rust tests (21), formatting, warning-as-error lint, npm audit, static build, and exact Tauri production build.
-- Live selective patch export and two-file reversal, safety confirmation, reset/isolation, keyboard dialog behavior, 390px layout, reduced motion, service-worker update, and offline reload.
-- Zero serious/critical Axe findings and no console/page errors on every valid route.
-- Privacy request log, security headers, caching, and bundle budgets.
-- License API rate limit: 30 successful requests; request 31 returned 429 with `Retry-After: 3`.
-- Lighthouse 13 mobile: performance/accessibility/best practices/SEO 100/100/100/100; LCP 1,452 ms, TBT 74 ms, CLS 0.
-- Published AppImage SHA-256 and clean Linux installer flow.
+- Clean install: Node 22.23.2, npm 10.9.8, `npm ci` installed 28 packages; `npm audit --audit-level=high` found 0 vulnerabilities.
+- Claims: all 31 commands from `.factory/claims.json` passed individually.
+- Browser: `npm test` passed 38/38 tests on Playwright 1.58.2 Chromium. This includes desktop, 390×844 mobile, 44 px targets, keyboard dialog focus trap/restore, six-route Axe scans, demo isolation, privacy requests, update/offline reload, security policy, routing, 404, and installer checks.
+- Native: Rust 1.98.0; `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, and 22/22 Rust tests passed.
+- Production build: `npm run build` produced `dist/site`; initial JS is 43.03 KB raw / 13.69 KB gzip and CSS is 15.78 KB raw / 4.36 KB gzip.
+- Local response smoke: `scripts/verify-url.sh` passed `/`, `/?demo=1`, `/app`, `/privacy`, `/terms`, and `/404` with valid title/lang/main/h1/alt and zero console errors.
+- Accessibility: all Axe serious/critical counts are zero. Mobile Lighthouse 13 scored performance 99, accessibility 100, best practices 100, and SEO 100; LCP 2.1 s, TBT 60 ms, CLS 0.
+- Packaging: a fresh `Change Recovery Ledger_0.1.10_amd64.AppImage` built successfully. SHA-256 was `e395b9f96524024e48bb48bc96bc13b39314eb5eefcc1ee23fe9dea5bbd6cbf1`; its 12-second Xvfb smoke had no host-library module failures.
+- Copy: `.factory/copy-audit.md` contains 42 audited lines; none exceeds 22 words or uses a banned marketing word.
 
-## Reproduce
+## Run it
 
 ```sh
 npm ci
 npm audit --audit-level=high
 npm test
 npm run build
-cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+cargo fmt --manifest-path src-tauri/Cargo.toml --check
 cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 cargo test --manifest-path src-tauri/Cargo.toml
-CI=true APPIMAGE_EXTRACT_AND_RUN=1 npm run tauri -- build
-npm run verify:paid-checkout
-bash scripts/verify-url.sh https://agent-change-recovery.sociobot.in
+CI=true APPIMAGE_EXTRACT_AND_RUN=1 npm run tauri -- build --bundles appimage
+bash scripts/smoke-appimage.sh "src-tauri/target/release/bundle/appimage/Change Recovery Ledger_0.1.10_amd64.AppImage"
 ```
 
-Linux needs the packages listed in `.github/workflows/release.yml`. Do not address the desktop CORS failure by weakening CSP or disabling web security; allow only the required Tauri origin or move the two billing requests behind narrow native commands.
+The release workflow builds macOS arm64 and Intel disk images, Windows MSI/EXE files, and Linux AppImage/DEB/RPM files. It publishes `SHA256SUMS` and `latest.json` only after the Ubuntu 24.04 AppImage smoke passes.
+
+## Release and deployment evidence
+
+Release `v0.1.10` and the static deployment are being published from this repair. Final workflow, asset checksum, live header, live identity, and route evidence will be appended after publication.
+
+## Known gaps and operator action
+
+- macOS and Windows packages remain unsigned, as the product already discloses. The workflow does not consume signing secrets. Adding notarization or Authenticode later requires an Apple certificate/notarization setup and a Windows PFX plus password.
+- The app does not check for desktop binary updates, so it intentionally ships no updater manifest.
 
 ## Workspace note
 
-Pre-existing modified and untracked `graphify-out/` files were preserved and must not be included in this verification commit.
+The pre-existing modified `graphify-out/` files were preserved and excluded from repair commits.

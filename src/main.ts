@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, isTauri } from '@tauri-apps/api/core';
 import './styles.css';
 
 type FileChange = {
@@ -40,7 +40,7 @@ declare global {
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const product = 'Change Recovery Ledger';
-const appVersion = '0.1.9';
+const appVersion = '0.1.10';
 const demoKey = 'demo:agent-change-recovery:ledger';
 const releasePage = 'https://github.com/B-Divyesh/sf-agent-change-recovery/releases';
 const releaseCacheKey = `release:agent-change-recovery:${appVersion}`;
@@ -48,8 +48,11 @@ const productSlug = 'agent-change-recovery';
 const billingBase = 'https://api.sociobot.in/api/v1';
 const productCatalog = `${billingBase}/products`;
 const proPriceMinor = 1500;
+const publishedSiteOrigin = 'https://agent-change-recovery.sociobot.in';
+const allowBrowserCatalog = location.origin === publishedSiteOrigin || import.meta.env.MODE === 'test';
 const licenseKey = `sb_license:${productSlug}`;
 const licenseCacheKey = `${licenseKey}:verification`;
+const desktopRuntime = isTauri() || Boolean(window.__TAURI_INTERNALS__);
 let activeCheckpoint = 'cp-3';
 let selectedFiles = new Set<string>(['src/auth/session.ts']);
 let toastTimer = 0;
@@ -173,7 +176,7 @@ async function verifyLicense() {
   licenseStatus = 'checking';
   if (currentPath() === '/' || currentPath() === '/app') render();
   try {
-    const verdict = window.__TAURI_INTERNALS__
+    const verdict = desktopRuntime
       ? await invoke<LicenseVerdict>('verify_license', { license: licenseToken })
       : await (async () => {
         const response = await fetch(`${billingBase}/products/${productSlug}/verify?license=${encodeURIComponent(licenseToken)}`);
@@ -216,7 +219,7 @@ function header() {
 function footer() {
   return `
     <footer class="site-footer">
-      <div><strong>Change Recovery Ledger</strong><p class="muted">Reverse selected agent changes without losing the rest.</p><small>Original generated artwork · v${appVersion} · build 2026.08.29</small></div>
+      <div><strong>Change Recovery Ledger</strong><p class="muted">Reverse selected agent changes without losing the rest.</p><small>Original generated artwork · v${appVersion} · build 2026.08.30</small></div>
       <nav class="footer-links" aria-label="Footer navigation"><a href="/privacy" data-route>Privacy</a><a href="/terms" data-route>Terms</a><a href="https://sociobot.in" rel="external">Built by Param Factory<span class="sr-only"> (external site)</span></a></nav>
     </footer>`;
 }
@@ -327,7 +330,7 @@ function demoPage() {
 }
 
 function realAppPage() {
-  const desktop = Boolean(window.__TAURI_INTERNALS__);
+  const desktop = desktopRuntime;
   const pro = isPro();
   return `${header()}<main id="main" tabindex="-1" class="app-shell"><div class="app-heading"><div><p class="eyebrow">Local project</p><h1>Capture an agent turn</h1></div><span class="chip ${desktop ? 'pass' : 'warn'}">${desktop ? 'Desktop ready' : 'Browser preview'}</span></div>
     <section class="capture-panel" aria-labelledby="capture-title"><h2 id="capture-title">New checkpoint</h2>${desktop ? '<div class="capture-actions"><button class="secondary" id="load-sample-project" type="button">Load sample project</button><button class="secondary" id="reset-sample-project" type="button">Reset sample project</button><button class="secondary" id="open-local-ledger" type="button">Open local ledger</button>' + (pro ? '<button class="secondary" id="open-encrypted-recovery" type="button">Open encrypted recovery</button>' : '') + '<p class="field-help">The bundled sample is stored separately from projects you choose.</p></div>' : '<p class="notice">Folder access starts in the desktop app. Download it to record a project you choose.</p>'}<form id="capture-form" class="capture-grid"><label>Project folder<input id="project-path" name="path" required placeholder="/Users/me/project" ${desktop ? '' : 'disabled'}><span class="field-help">Type the full path to one local project.</span></label><label>Agent intent<input id="checkpoint-intent" name="intent" required placeholder="Fix session refresh race" ${desktop ? '' : 'disabled'}><span class="field-help">Describe the requested result.</span></label><label>Commands<textarea id="checkpoint-commands" name="commands" rows="2" placeholder="npm test" ${desktop ? '' : 'disabled'}></textarea></label><label>Ledger passphrase<input id="ledger-passphrase" name="passphrase" type="password" minlength="12" required autocomplete="current-password" ${desktop ? '' : 'disabled'}><span class="field-help">Encrypts every local snapshot. It is never saved.</span></label><label>Retention<select id="retention" name="retention" ${desktop ? '' : 'disabled'}>${retentionOptions()}</select><span class="field-help">The oldest checkpoint is pruned safely.</span></label>${pro ? `<label>Team policy note<textarea id="team-policy" name="policy" rows="2" placeholder="Review authentication changes before reversal" ${desktop ? '' : 'disabled'}>${escapeHtml(realPolicy)}</textarea><span class="field-help">Saved in this encrypted local ledger.</span></label>` : '<p class="field-help pro-note">Pro adds 30/90 checkpoint retention and an encrypted team policy note.</p>'}<button class="primary" type="submit" ${desktop ? '' : 'disabled'}>Capture checkpoint</button></form></section>
@@ -821,10 +824,14 @@ async function resolveCheckout() {
   const fact = document.querySelector<HTMLElement>('#pro-fact');
   if (!action || !price || !fact) return;
   try {
-    const catalogResponse = await fetch(productCatalog);
-    if (!catalogResponse.ok) throw new Error('Product catalog unavailable');
-    const catalog = await catalogResponse.json() as { data?: ProductListing[] };
-    const listed = catalog.data?.find(item => item.slug === productSlug);
+    const listed = desktopRuntime
+      ? await invoke<ProductListing | null>('get_product_listing')
+      : allowBrowserCatalog ? await (async () => {
+        const catalogResponse = await fetch(productCatalog);
+        if (!catalogResponse.ok) throw new Error('Product catalog unavailable');
+        const catalog = await catalogResponse.json() as { data?: ProductListing[] };
+        return catalog.data?.find(item => item.slug === productSlug) ?? null;
+      })() : null;
     const checkout = listed ? new URL(listed.checkout_url) : null;
     if (
       !listed ||
@@ -934,6 +941,6 @@ history.replaceState({ ...(history.state ?? {}), scrollY: window.scrollY }, '', 
 initialiseLicense();
 render();
 
-if ('serviceWorker' in navigator && !window.__TAURI_INTERNALS__) {
+if ('serviceWorker' in navigator && !desktopRuntime) {
   window.addEventListener('load', () => { void navigator.serviceWorker.register('/sw.js').catch(() => undefined); });
 }
