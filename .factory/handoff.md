@@ -58,8 +58,9 @@ Fresh-clone gate at implementation commit
 
 GitHub evidence:
 
-- Quality run `33291862197` — success on Linux and Windows:
-  `https://github.com/B-Divyesh/sf-agent-change-recovery/actions/runs/33291862197`.
+- Quality run `33292342032` for implementation commit `5c8c5c1` — success on
+  Linux and Windows:
+  `https://github.com/B-Divyesh/sf-agent-change-recovery/actions/runs/33292342032`.
 - Release run `33291740902` — success for macOS arm64/x64, Windows x64,
   Linux x64, Linux AppImage launch, Windows install/app launch, checksums, and
   manifest:

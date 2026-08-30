@@ -82,4 +82,4 @@ Candidate repaired from `f8b272dda668583131aaceab841aaf6b67257894`. Release and 
 - Machine-readable cold check: `.factory/evidence/polish-2-live.json`
 - Lighthouse report: `.factory/evidence/polish-2-lighthouse.json` (99 performance; 100 accessibility, best practices, and SEO)
 - Published release: `https://github.com/B-Divyesh/sf-agent-change-recovery/releases/tag/v0.1.12`
-- Quality run: `https://github.com/B-Divyesh/sf-agent-change-recovery/actions/runs/33291862197` (success)
+- Quality run: `https://github.com/B-Divyesh/sf-agent-change-recovery/actions/runs/33292342032` (success for implementation commit `5c8c5c1`)
