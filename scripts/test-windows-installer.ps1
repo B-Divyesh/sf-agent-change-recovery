@@ -19,7 +19,7 @@ $env:ACR_WAIT_FOR_INSTALLER = "1"
 $env:ACR_START_PROOF_PATH = Join-Path $sandbox "start.json"
 $installerScript = Join-Path (Get-Location) "public/install.ps1"
 & $installerScript
-if ((Get-Content $marker -Raw) -ne "started") { throw "The verified executable was not started." }
+if ((Get-Content $marker -Raw).Trim() -ne "started") { throw "The verified executable was not started." }
 
 Remove-Item $marker, $env:ACR_START_PROOF_PATH -Force
 "$('0' * 64)  $(Split-Path $asset -Leaf)" | Set-Content $sums -Encoding ascii
