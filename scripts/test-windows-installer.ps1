@@ -3,13 +3,7 @@ $sandbox = Join-Path $env:RUNNER_TEMP "acr-install-script-test"
 New-Item -ItemType Directory -Path $sandbox -Force | Out-Null
 $asset = Join-Path $sandbox "Change.Recovery.Ledger_test_x64-setup.exe"
 $marker = Join-Path $sandbox "started.txt"
-Add-Type -TypeDefinition @"
-using System;
-using System.IO;
-public static class InstallerProbe {
-  public static void Main() { File.WriteAllText(Environment.GetEnvironmentVariable("ACR_TEST_MARKER"), "started"); }
-}
-"@ -OutputAssembly $asset -OutputType ConsoleApplication
+Copy-Item "$env:SystemRoot\System32\cmd.exe" $asset -Force
 $digest = (Get-FileHash $asset -Algorithm SHA256).Hash.ToLower()
 $metadata = Join-Path $sandbox "release.json"
 $sums = Join-Path $sandbox "SHA256SUMS"
@@ -20,9 +14,9 @@ $env:ACR_RELEASE_METADATA_PATH = $metadata
 $env:ACR_CHECKSUMS_PATH = $sums
 $env:ACR_ASSET_SOURCE_PATH = $asset
 $env:ACR_DOWNLOAD_DIR = Join-Path $sandbox "download"
+$env:ACR_INSTALLER_ARGUMENTS = "/c echo started > `"$marker`""
 $env:ACR_WAIT_FOR_INSTALLER = "1"
 $env:ACR_START_PROOF_PATH = Join-Path $sandbox "start.json"
-$env:ACR_TEST_MARKER = $marker
 $installerScript = Join-Path (Get-Location) "public/install.ps1"
 & $installerScript
 if ((Get-Content $marker -Raw) -ne "started") { throw "The verified executable was not started." }
