@@ -155,10 +155,17 @@
   },
   {
     "id": "platform-download",
-    "claim": "The landing page selects the current release for your operating system.",
+    "claim": "The landing page offers only a complete release matching its own version for your operating system.",
     "where": "landing download section and README",
     "test": "npm test -- --grep @claim:platform-download",
-    "sandbox": "mock GitHub latest-release API under Linux, macOS, and Windows user agents; assert each exact asset link"
+    "sandbox": "mock GitHub latest-release API under Linux, macOS, and Windows user agents; assert each exact current-version asset link, then assert an older release falls back to the release page"
+  },
+  {
+    "id": "release-candidate-identity",
+    "claim": "The release workflow validates the exact tag, desktop files, SHA256SUMS, and latest.json before it passes.",
+    "where": "README release instructions",
+    "test": "npm test -- --grep @claim:release-candidate-identity",
+    "sandbox": "complete release fixture with all platform assets and matching checksums passes the workflow validator; a stale tag fixture fails"
   },
   {
     "id": "release-request-privacy",

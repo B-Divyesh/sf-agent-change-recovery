@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -9,6 +9,19 @@ const releaseApiUrl = 'https://api.github.com/repos/B-Divyesh/sf-agent-change-re
 const billingCatalogUrl = 'https://api.sociobot.in/api/v1/products';
 const checkoutUrl = 'https://api.sociobot.in/api/v1/products/agent-change-recovery/checkout';
 const corsHeaders = { 'access-control-allow-origin': '*' };
+const appVersion = (JSON.parse(readFileSync('package.json', 'utf8')) as { version: string }).version;
+const releaseTag = `v${appVersion}`;
+const releasePage = 'https://github.com/B-Divyesh/sf-agent-change-recovery/releases';
+const completeReleaseAssets = [
+  { name: `Change.Recovery.Ledger_${appVersion}_amd64.AppImage`, browser_download_url: 'https://example.test/linux.AppImage' },
+  { name: `Change.Recovery.Ledger_${appVersion}_amd64.deb`, browser_download_url: 'https://example.test/linux.deb' },
+  { name: `Change.Recovery.Ledger-${appVersion}-1.x86_64.rpm`, browser_download_url: 'https://example.test/linux.rpm' },
+  { name: `Change.Recovery.Ledger_${appVersion}_aarch64.dmg`, browser_download_url: 'https://example.test/macos-arm64.dmg' },
+  { name: `Change.Recovery.Ledger_${appVersion}_x64.dmg`, browser_download_url: 'https://example.test/macos-x64.dmg' },
+  { name: `Change.Recovery.Ledger_${appVersion}_x64_en-US.msi`, browser_download_url: 'https://example.test/windows.msi' },
+  { name: 'SHA256SUMS', browser_download_url: 'https://example.test/SHA256SUMS' },
+  { name: 'latest.json', browser_download_url: 'https://example.test/latest.json' }
+];
 
 test.beforeEach(async ({ context }) => {
   await context.addInitScript(() => {
@@ -22,11 +35,8 @@ test.beforeEach(async ({ context }) => {
   // Landing pages resolve current downloads at runtime. Keep non-release tests
   // hermetic so GitHub rate limiting cannot produce a browser resource error.
   await context.route(releaseApiUrl, route => route.fulfill({ json: {
-    tag_name: 'v0.1.5-test',
-    assets: [{
-      name: 'Change.Recovery.Ledger_0.1.5-test_amd64.AppImage',
-      browser_download_url: 'https://example.test/Change.Recovery.Ledger_0.1.5-test_amd64.AppImage'
-    }]
+    tag_name: releaseTag,
+    assets: completeReleaseAssets
   } }));
   await context.route(billingCatalogUrl, route => route.fulfill({ json: { data: [] }, headers: corsHeaders }));
 });
@@ -201,20 +211,14 @@ test('service worker installs the shipped shell, updates its cache, and keeps th
 });
 
 test('@claim:platform-download selects exact assets for Linux, macOS, and Windows', async ({ browser }) => {
-  const assets = [
-    { name: 'Change.Recovery.Ledger_0.1.2_amd64.AppImage', browser_download_url: 'https://example.test/linux.AppImage' },
-    { name: 'Change.Recovery.Ledger_0.1.2_aarch64.dmg', browser_download_url: 'https://example.test/macos-arm64.dmg' },
-    { name: 'Change.Recovery.Ledger_0.1.2_x64.dmg', browser_download_url: 'https://example.test/macos-x64.dmg' },
-    { name: 'Change.Recovery.Ledger_0.1.2_x64-setup.exe', browser_download_url: 'https://example.test/windows.exe' }
-  ];
   for (const [userAgent, expected] of [
     ['Mozilla/5.0 (X11; Linux x86_64)', 'https://example.test/linux.AppImage'],
     ['Mozilla/5.0 (Macintosh; Intel Mac OS X)', 'https://example.test/macos-x64.dmg'],
-    ['Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'https://example.test/windows.exe']
+    ['Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'https://example.test/windows.msi']
   ]) {
     const context = await browser.newContext({ userAgent });
     const page = await context.newPage();
-    await page.route(releaseApiUrl, route => route.fulfill({ json: { tag_name: 'v0.1.2', assets } }));
+    await page.route(releaseApiUrl, route => route.fulfill({ json: { tag_name: releaseTag, assets: completeReleaseAssets } }));
     await page.route(billingCatalogUrl, route => route.fulfill({ json: { data: [] }, headers: corsHeaders }));
     await page.goto('/');
     await expect(page.locator('#download-button')).toHaveAttribute('href', expected);
@@ -225,15 +229,21 @@ test('@claim:platform-download selects exact assets for Linux, macOS, and Window
     }
     await context.close();
   }
+  const staleContext = await browser.newContext({ userAgent: 'Mozilla/5.0 (X11; Linux x86_64)' });
+  const stalePage = await staleContext.newPage();
+  await stalePage.route(releaseApiUrl, route => route.fulfill({ json: { tag_name: 'v0.0.0-stale', assets: completeReleaseAssets } }));
+  await stalePage.route(billingCatalogUrl, route => route.fulfill({ json: { data: [] }, headers: corsHeaders }));
+  await stalePage.goto('/');
+  await expect(stalePage.locator('#download-button')).toHaveAttribute('href', releasePage);
+  await expect(stalePage.locator('#download-button')).toHaveText('View release page');
+  await expect(stalePage.locator('#download-status')).toContainText('is being published');
+  await staleContext.close();
 });
 
 test('Apple silicon Mac visitors receive the ARM build and can still choose Intel', async ({ browser }) => {
   const context = await browser.newContext({ userAgent: 'Mozilla/5.0 (Macintosh; ARM64 Mac OS X)' });
   const page = await context.newPage();
-  await page.route(releaseApiUrl, route => route.fulfill({ json: { tag_name: 'v0.1.2', assets: [
-    { name: 'Change.Recovery.Ledger_0.1.2_aarch64.dmg', browser_download_url: 'https://example.test/macos-arm64.dmg' },
-    { name: 'Change.Recovery.Ledger_0.1.2_x64.dmg', browser_download_url: 'https://example.test/macos-x64.dmg' }
-  ] } }));
+  await page.route(releaseApiUrl, route => route.fulfill({ json: { tag_name: releaseTag, assets: completeReleaseAssets } }));
   await page.route(billingCatalogUrl, route => route.fulfill({ json: { data: [] }, headers: corsHeaders }));
   await page.goto('/');
   await expect(page.locator('#download-button')).toHaveAttribute('href', 'https://example.test/macos-arm64.dmg');
@@ -336,11 +346,8 @@ test('built security policy keeps frame ancestry in the response header only wit
   await page.route(releaseApiUrl, route => {
     releaseRequests.push(route.request().url());
     return route.fulfill({ json: {
-      tag_name: 'v0.1.5-test',
-      assets: [{
-        name: 'Change.Recovery.Ledger_0.1.5-test_amd64.AppImage',
-        browser_download_url: 'https://example.test/Change.Recovery.Ledger_0.1.5-test_amd64.AppImage'
-      }]
+      tag_name: releaseTag,
+      assets: completeReleaseAssets
     } });
   });
   await page.goto('/', { waitUntil: 'networkidle' });
@@ -348,7 +355,7 @@ test('built security policy keeps frame ancestry in the response header only wit
   const config = JSON.parse(readFileSync('public/staticwebapp.config.json', 'utf8')) as { globalHeaders: Record<string, string> };
   expect(config.globalHeaders['Content-Security-Policy']).toContain("frame-ancestors 'none'");
   expect(releaseRequests).toEqual([releaseApiUrl]);
-  await expect(page.locator('#download-status')).toContainText('v0.1.5-test');
+  await expect(page.locator('#download-status')).toContainText(releaseTag);
   expect(errors).toEqual([]);
 });
 
@@ -408,6 +415,49 @@ test('@claim:release-platforms declares macOS, Windows, Linux, checksums, and ma
   expect(source).toContain('ubuntu-22.04');
   expect(source).toContain('SHA256SUMS');
   expect(source).toContain('latest.json');
+  expect(source).toContain('Verify published release identity');
+  expect(source).toContain('scripts/verify-release.py');
+});
+
+test('@claim:release-candidate-identity rejects a stale release and validates a complete tagged release', () => {
+  const sandbox = mkdtempSync(join(tmpdir(), 'acr-release-identity-'));
+  const assetDirectory = join(sandbox, 'assets');
+  const releasePath = join(sandbox, 'release.json');
+  const commit = '0123456789abcdef0123456789abcdef01234567';
+  const desktopAssets = [
+    `Change.Recovery.Ledger_${appVersion}_aarch64.dmg`,
+    `Change.Recovery.Ledger_${appVersion}_x64.dmg`,
+    `Change.Recovery.Ledger_${appVersion}_amd64.AppImage`,
+    `Change.Recovery.Ledger_${appVersion}_amd64.deb`,
+    `Change.Recovery.Ledger-${appVersion}-1.x86_64.rpm`,
+    `Change.Recovery.Ledger_${appVersion}_x64_en-US.msi`
+  ];
+  mkdirSync(assetDirectory);
+  try {
+    for (const [index, name] of desktopAssets.entries()) writeFileSync(join(assetDirectory, name), `asset ${index}\n`);
+    const sums = desktopAssets.map(name => `${execFileSync('sha256sum', [join(assetDirectory, name)], { encoding: 'utf8' }).split(/\s+/)[0]}  ${name}`).join('\n');
+    writeFileSync(join(assetDirectory, 'SHA256SUMS'), `${sums}\n`);
+    writeFileSync(join(assetDirectory, 'latest.json'), JSON.stringify({
+      version: appVersion,
+      tag: releaseTag,
+      assets: desktopAssets.map(name => ({ name, url: `https://github.com/example/repo/releases/download/${releaseTag}/${name}` }))
+    }));
+    writeFileSync(releasePath, JSON.stringify({
+      tagName: releaseTag,
+      targetCommitish: commit,
+      assets: [...desktopAssets, 'SHA256SUMS', 'latest.json'].map(name => ({ name }))
+    }));
+    const valid = spawnSync('python3', ['scripts/verify-release.py', releaseTag, commit, releasePath, assetDirectory], { encoding: 'utf8' });
+    expect(valid.status, valid.stderr).toBe(0);
+    expect(valid.stdout).toContain(`release verified: ${releaseTag}`);
+
+    writeFileSync(releasePath, JSON.stringify({ tagName: 'v0.0.0-stale', targetCommitish: commit, assets: [...desktopAssets, 'SHA256SUMS', 'latest.json'].map(name => ({ name })) }));
+    const stale = spawnSync('python3', ['scripts/verify-release.py', releaseTag, commit, releasePath, assetDirectory], { encoding: 'utf8' });
+    expect(stale.status).not.toBe(0);
+    expect(stale.stderr).toContain('does not match');
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
 });
 
 test('Linux AppImage packaging installs its required tool and verifies the generated asset', () => {

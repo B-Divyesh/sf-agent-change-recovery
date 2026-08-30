@@ -40,8 +40,10 @@ declare global {
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const product = 'Change Recovery Ledger';
+const appVersion = '0.1.8';
 const demoKey = 'demo:agent-change-recovery:ledger';
 const releasePage = 'https://github.com/B-Divyesh/sf-agent-change-recovery/releases';
+const releaseCacheKey = `release:agent-change-recovery:${appVersion}`;
 const productSlug = 'agent-change-recovery';
 const billingBase = 'https://api.sociobot.in/api/v1';
 const productCatalog = `${billingBase}/products`;
@@ -214,7 +216,7 @@ function header() {
 function footer() {
   return `
     <footer class="site-footer">
-      <div><strong>Change Recovery Ledger</strong><p class="muted">Reverse selected agent changes without losing the rest.</p><small>Original generated artwork · v0.1.7 · build 2026.08.29</small></div>
+      <div><strong>Change Recovery Ledger</strong><p class="muted">Reverse selected agent changes without losing the rest.</p><small>Original generated artwork · v${appVersion} · build 2026.08.29</small></div>
       <nav class="footer-links" aria-label="Footer navigation"><a href="/privacy" data-route>Privacy</a><a href="/terms" data-route>Terms</a><a href="https://sociobot.in" rel="external">Built by Param Factory<span class="sr-only"> (external site)</span></a></nav>
     </footer>`;
 }
@@ -721,6 +723,21 @@ function releaseAsset(release: Release, pattern: RegExp) {
   return release.assets.find(item => pattern.test(item.name));
 }
 
+function isCurrentCompleteRelease(release: Release) {
+  if (release.tag_name !== `v${appVersion}`) return false;
+  const requiredAssets = [
+    /(?:aarch64|arm64).*\.dmg$/i,
+    /(?:x64|x86_64|amd64).*\.dmg$/i,
+    /\.AppImage$/i,
+    /\.deb$/i,
+    /\.rpm$/i,
+    /\.(?:msi|exe)$/i,
+    /^SHA256SUMS$/i,
+    /^latest\.json$/i
+  ];
+  return requiredAssets.every(pattern => release.assets.some(asset => pattern.test(asset.name)));
+}
+
 function setDownloadButtons(buttons: HTMLAnchorElement[], asset: ReleaseAsset, label: string) {
   for (const button of buttons) {
     button.href = asset.browser_download_url;
@@ -738,7 +755,7 @@ async function resolveDownload() {
   if (!buttons.length || !statuses.length) return;
   const os = /Win/i.test(navigator.userAgent) ? 'Windows' : /Mac/i.test(navigator.userAgent) ? 'macOS' : 'Linux';
   try {
-    const cacheRaw = localStorage.getItem('release:agent-change-recovery');
+    const cacheRaw = localStorage.getItem(releaseCacheKey);
     const cache = cacheRaw ? JSON.parse(cacheRaw) as { saved: number; value: Release } : null;
     let release: Release;
     if (cache && Date.now() - cache.saved < 3_600_000) release = cache.value;
@@ -746,8 +763,9 @@ async function resolveDownload() {
       const response = await fetch('https://api.github.com/repos/B-Divyesh/sf-agent-change-recovery/releases/latest');
       if (!response.ok) throw new Error('No published release');
       release = await response.json() as Release;
-      localStorage.setItem('release:agent-change-recovery', JSON.stringify({ saved: Date.now(), value: release }));
+      localStorage.setItem(releaseCacheKey, JSON.stringify({ saved: Date.now(), value: release }));
     }
+    if (!isCurrentCompleteRelease(release)) throw new Error('Current desktop release is not published yet');
     if (os === 'macOS') {
       const appleSilicon = releaseAsset(release, /(?:aarch64|arm64).*(?:\.dmg|\.app\.tar\.gz)$/i);
       const intel = releaseAsset(release, /(?:x64|x86_64|amd64).*(?:\.dmg|\.app\.tar\.gz)$/i);

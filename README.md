@@ -66,8 +66,8 @@ When checkout is available, Sociobot and Dodo are the merchant of record.
 
 ## Install a release
 
-The landing page selects the current release for your operating system.
-It links directly to a published macOS, Windows, or Linux file when available.
+The landing page selects a complete release that matches its own version.
+It does not offer an older desktop build while the current release is publishing.
 For macOS, it shows both Apple silicon and Intel downloads so you can choose the correct build.
 
 ```sh
@@ -95,8 +95,9 @@ npm run build
 `npm run build` writes the static deployment output to `dist/site`.
 
 The release workflow builds desktop packages on macOS, Windows, and Linux runners.
-Tag `v0.1.7` or later to start that workflow.
+Tag `v0.1.8` or later to start that workflow.
 It publishes checksums and a release manifest with the desktop files.
+Before the workflow passes, it verifies the exact tag, all desktop files, `SHA256SUMS`, and `latest.json` from the published release.
 
 ## Privacy
 
