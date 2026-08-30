@@ -1,0 +1,39 @@
+{
+  "candidate": "e3449421e29444260713c32f31f0ab72e1994f10",
+  "candidate_release": {
+    "tag": "v0.1.7",
+    "workflow_run": 33282024600,
+    "conclusion": "success",
+    "head_sha": "e3449421e29444260713c32f31f0ab72e1994f10"
+  },
+  "repair": {
+    "commit": "70daa47643390692d92339e8ede0619ac4237cb9",
+    "tag": "v0.1.9",
+    "workflow_run": 33283161825,
+    "conclusion": "success",
+    "release_assets": 11,
+    "desktop_assets": 9,
+    "release_identity": "release verified: v0.1.9 at 70daa4764339 with 9 desktop artifacts"
+  },
+  "production": {
+    "url": "https://agent-change-recovery.sociobot.in",
+    "checkout": "https://api.sociobot.in/api/v1/products/agent-change-recovery/checkout",
+    "catalog_price_minor": 1500,
+    "catalog_currency": "USD",
+    "checkout_head_status": 303,
+    "pre_purchase_origins": [
+      "https://agent-change-recovery.sociobot.in",
+      "https://api.github.com",
+      "https://api.sociobot.in"
+    ],
+    "dodo_requested_before_click": false
+  },
+  "live_checks": {
+    "serious_or_critical_axe": 0,
+    "console_errors": 0,
+    "offline_demo_reload": true,
+    "mobile_viewport": 390,
+    "mobile_overflow": false,
+    "dialog_focus_restored": true
+  }
+}
