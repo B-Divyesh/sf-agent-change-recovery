@@ -596,6 +596,11 @@
       "degree": 15
     },
     {
+      "id": "src_main_render",
+      "label": "render()",
+      "degree": 14
+    },
+    {
       "id": "src_tauri_src_lib_create_ledger_store",
       "label": "create_ledger_store()",
       "degree": 14
@@ -613,11 +618,6 @@
     {
       "id": "src_tauri_src_lib_open_encrypted_store",
       "label": "open_encrypted_store()",
-      "degree": 14
-    },
-    {
-      "id": "src_tauri_src_lib_previous_snapshot",
-      "label": "previous_snapshot()",
       "degree": 14
     }
   ],
