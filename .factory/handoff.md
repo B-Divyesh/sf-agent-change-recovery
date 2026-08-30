@@ -49,7 +49,16 @@ The release workflow builds macOS arm64 and Intel disk images, Windows MSI/EXE f
 
 ## Release and deployment evidence
 
-Release `v0.1.11` and the static deployment are being published from this repair. Final workflow, asset checksum, live header, live identity, and route evidence will be appended after publication.
+- Repair commits: `45bb64bf0d3185322f70a53f6c6c1e6e05abbeef` implements the findings; `7d989f0e3b99fee95189effab5c34a63993ae09b` adds the clean-runner graphics prerequisite and is tagged `v0.1.11`.
+- GitHub quality run [`33287910730`](https://github.com/B-Divyesh/sf-agent-change-recovery/actions/runs/33287910730) passed its browser and Rust jobs.
+- GitHub release run [`33287911698`](https://github.com/B-Divyesh/sf-agent-change-recovery/actions/runs/33287911698) passed four platform builds, the Ubuntu 24.04 AppImage smoke, and manifest verification.
+- Release [`v0.1.11`](https://github.com/B-Divyesh/sf-agent-change-recovery/releases/tag/v0.1.11) targets `7d989f0e3b99fee95189effab5c34a63993ae09b`. It contains arm64 and Intel DMGs, MSI and EXE installers, AppImage, DEB, RPM, app archives, `SHA256SUMS`, and `latest.json`.
+- Published `latest.json` identifies version `0.1.11` and tag `v0.1.11`. The downloaded AppImage matched `SHA256SUMS` at `347e26646be7f3478faad955c02407def8c9f38e32f8d23ff6129ab014ed4a0b`, remained open for the 12-second Ubuntu 24.04 smoke, logged no module error, and visibly resolved the live `$15` catalog price.
+- Interim `v0.1.10` was not promoted after its clean-runner smoke found a missing host `libGLESv2.so.2`. Version 0.1.11 adds `libgles2` to that runner and is the successful release.
+- Static deployment `ce487561-7d96-4d98-8276-5186f66602ef` completed at `https://agent-change-recovery.sociobot.in`. The live `/assets/index-BO2myMSz.js` matches local output at SHA-256 `3a1b7264cdf7e8fa8a5e107231d99a629761a9725130583c06a8ba5e871cad01`.
+- Live `/`, `/?demo=1`, `/app`, `/privacy`, `/terms`, and `/404` pass title/lang/main/h1/alt/console checks. A missing route returns HTTP 404. CSP includes `frame-ancestors 'none'`; nosniff, strict referrer, and permissions policies are present; hashed assets are immutable; `sw.js` is no-cache.
+- Fresh Linux, Windows, Apple silicon, and Intel browser contexts each receive the exact matching 0.1.11 download. The live 390 px demo has no page overflow, zero serious/critical Axe findings, updates to `recovery-ledger-v9`, and reloads offline.
+- Final live Lighthouse 13 mobile scores are performance 100, accessibility 100, best practices 100, and SEO 100; LCP 1.4 s, TBT 60 ms, CLS 0.
 
 ## Known gaps and operator action
 
