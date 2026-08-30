@@ -74,6 +74,8 @@ Candidate repaired from `f8b272dda668583131aaceab841aaf6b67257894`. Release and 
 
 ## Final evidence locations
 
+- Clean clone of `5c8c5c125f799610b0214495e8756f9455b45092`: all 33 declared claim commands, 39 browser tests, 23 native tests, build, and checkout check passed
+
 - Live landing: `.factory/evidence/polish-2-live-landing-mobile.png`
 - Live one-click demo: `.factory/evidence/polish-2-live-demo-mobile.png`
 - Live 404: `.factory/evidence/polish-2-live-404-mobile.png`

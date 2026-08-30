@@ -45,6 +45,17 @@ Local final-tree gates:
 - `npm run verify:paid-checkout` — the registered $15 checkout returned HTTP
   303 without sending project content.
 
+Fresh-clone gate at implementation commit
+`5c8c5c125f799610b0214495e8756f9455b45092`:
+
+- Cloned `main` into a new empty directory and ran `npm ci`.
+- `npm run test:claim-tags && npm run test:claims` — all 33 exact commands in
+  `.factory/claims.json` passed, including native syscall privacy, current-folder
+  comparison, published artifact checksums, and Windows consumer proof.
+- `npm test` — 39/39 passed; `cargo test --manifest-path
+  src-tauri/Cargo.toml` — 23/23 passed; `npm run build` and `npm run
+  verify:paid-checkout` passed in that same clone.
+
 GitHub evidence:
 
 - Quality run `33291862197` — success on Linux and Windows:
