@@ -376,7 +376,7 @@ function render(focus = false) {
 }
 
 function navigate(path: string) {
-  history.replaceState({ ...(history.state ?? {}), scrollY: window.scrollY }, '', location.href);
+  history.replaceState({ ...(history.state ?? {}), scrollY: 0 }, '', location.href);
   history.pushState({ scrollY: 0 }, '', path);
   render(true);
 }
@@ -963,7 +963,7 @@ window.addEventListener('popstate', () => render(true));
 window.addEventListener('online', () => document.body.classList.remove('offline'));
 window.addEventListener('offline', () => document.body.classList.add('offline'));
 
-history.replaceState({ ...(history.state ?? {}), scrollY: window.scrollY }, '', location.href);
+history.replaceState({ ...(history.state ?? {}), scrollY: 0 }, '', location.href);
 initialiseLicense();
 render();
 

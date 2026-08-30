@@ -17,7 +17,11 @@ export async function github(path) {
 export async function candidateRelease() {
   const release = await (await github(`/releases/tags/${tag}`)).json();
   if (release.tag_name !== tag || release.draft || release.prerelease) throw new Error(`Published candidate ${tag} is unavailable.`);
-  execFileSync('git', ['merge-base', '--is-ancestor', release.target_commitish, 'HEAD']);
+  const head = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+  if (head !== release.target_commitish) {
+    const comparison = await (await github(`/compare/${release.target_commitish}...${head}`)).json();
+    if (comparison.status !== 'ahead' && comparison.status !== 'identical') throw new Error('Published release commit is not an ancestor of this source tree.');
+  }
   return release;
 }
 

@@ -1,0 +1,23 @@
+{
+  "tag": "v0.1.12",
+  "commit": "7dc899da2af1890bbf96ebe1373794940bbe42ed",
+  "release_url": "https://github.com/B-Divyesh/sf-agent-change-recovery/releases/tag/v0.1.12",
+  "workflow_url": "https://github.com/B-Divyesh/sf-agent-change-recovery/actions/runs/33291740902",
+  "workflow_conclusion": "success",
+  "jobs": {
+    "macos_arm64": "success",
+    "macos_x64": "success",
+    "windows_x64": "success",
+    "linux_x64": "success",
+    "linux_appimage_launch_smoke": "success",
+    "windows_verified_install_and_launch": "success",
+    "manifest_and_checksum_verification": "success"
+  },
+  "windows_consumer_proof": {
+    "installer": "Change.Recovery.Ledger_0.1.12_x64-setup.exe",
+    "sha256": "dec1af6deb28171969750e527335b176cfc4301e2e85259c29026c711912d84e",
+    "verified_installer_starts": 1,
+    "checksum_mismatch_starts": 0,
+    "installed_app_launch_smoke": true
+  }
+}

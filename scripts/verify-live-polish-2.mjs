@@ -26,8 +26,19 @@ try {
     merchantLanguage: document.body.innerText.toLowerCase().includes('merchant of record'),
     macLabels: [...document.querySelectorAll('[data-macos-downloads] a')].map(node => node.textContent?.trim())
   }));
+  result.download = {
+    href: await page.locator('#download-button').getAttribute('href'),
+    status: await page.locator('#download-status').textContent()
+  };
   if (result.firstScreen.factsBottom > result.firstScreen.viewportHeight || result.firstScreen.scrollWidth > result.firstScreen.viewportWidth || result.firstScreen.merchantLanguage) throw new Error('First-screen/mobile/copy acceptance failed.');
   if (!result.firstScreen.macLabels.every(label => label?.startsWith('Download for '))) throw new Error('Mac controls do not name their result.');
+  if (!result.download.href?.includes('/releases/download/v0.1.12/') || !result.download.status?.includes('v0.1.12')) throw new Error('Landing download does not resolve to the candidate release.');
+
+  await page.getByRole('link', { name: 'Privacy' }).first().click();
+  await page.goBack();
+  await page.waitForTimeout(300);
+  result.history = await page.evaluate(() => ({ scrollY, headingFocused: document.activeElement === document.querySelector('h1'), headingTop: Math.round(document.querySelector('h1')?.getBoundingClientRect().top ?? -1) }));
+  if (result.history.scrollY !== 0 || !result.history.headingFocused || result.history.headingTop < 0) throw new Error(`History focus restoration failed: ${JSON.stringify(result.history)}`);
 
   await page.evaluate(() => localStorage.setItem('real:polish-2-sentinel', 'keep'));
   const demoRequests = [];
@@ -74,6 +85,36 @@ try {
   if (missing.status !== 404 || JSON.stringify(home.headerLinks) !== JSON.stringify(missing.headerLinks) || JSON.stringify(home.footerLinks) !== JSON.stringify(missing.footerLinks) || home.build !== missing.build) throw new Error('404 shared shell acceptance failed.');
   await page.screenshot({ path: `${output}/polish-2-live-404-mobile.png`, fullPage: true });
   if (result.consoleErrors.length) throw new Error(`Console errors: ${result.consoleErrors.join('; ')}`);
+
+  const privacyContext = await browser.newContext({ viewport: { width: 390, height: 844 }, acceptDownloads: true });
+  const privacyPage = await privacyContext.newPage();
+  const privacyRequests = [];
+  privacyPage.on('request', request => privacyRequests.push(request.url()));
+  await privacyPage.goto(`${origin}/?demo=1`, { waitUntil: 'networkidle' });
+  await privacyPage.getByRole('button', { name: 'Export selected patch' }).click();
+  await privacyPage.getByRole('button', { name: 'Reverse 1 selected file' }).click();
+  await privacyPage.getByRole('button', { name: 'Create checkpoint and reverse' }).click();
+  result.demoOrigins = [...new Set(privacyRequests.map(url => new URL(url).origin))];
+  if (JSON.stringify(result.demoOrigins) !== JSON.stringify([origin])) throw new Error(`Demo contacted unexpected origins: ${result.demoOrigins.join(', ')}`);
+  await privacyContext.close();
+
+  const offlineContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const offlinePage = await offlineContext.newPage();
+  await offlinePage.goto(`${origin}/?demo=1`, { waitUntil: 'networkidle' });
+  await offlinePage.evaluate(() => navigator.serviceWorker.ready);
+  await offlinePage.reload({ waitUntil: 'networkidle' });
+  await offlineContext.setOffline(true);
+  await offlinePage.reload({ waitUntil: 'domcontentloaded' });
+  result.offline = await offlinePage.evaluate(() => ({
+    title: document.title,
+    heading: document.querySelector('h1')?.textContent?.trim(),
+    banner: document.querySelector('.demo-banner')?.textContent?.includes('nothing is saved'),
+    notice: document.querySelector('.offline-notice')?.textContent?.trim(),
+    controlled: Boolean(navigator.serviceWorker.controller)
+  }));
+  if (!result.offline.controlled || !result.offline.banner || result.offline.heading !== 'Inspect the failed session change') throw new Error('Cold offline demo reload failed.');
+  await offlineContext.close();
+
   writeFileSync(`${output}/polish-2-live.json`, `${JSON.stringify(result, null, 2)}\n`);
   console.log(JSON.stringify(result, null, 2));
   await context.close();

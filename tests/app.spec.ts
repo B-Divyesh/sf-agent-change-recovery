@@ -497,6 +497,7 @@ test('static deployment serves public files before the styled real 404 fallback'
 
 test('every route has its own title and history navigation works', async ({ page }) => {
   await page.goto('/');
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   await page.getByRole('link', { name: 'Privacy' }).first().click();
   await expect(page).toHaveTitle('Privacy — Change Recovery Ledger');
   await page.goBack();

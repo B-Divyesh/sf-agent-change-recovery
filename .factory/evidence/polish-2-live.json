@@ -1,0 +1,182 @@
+{
+  "origin": "https://agent-change-recovery.sociobot.in",
+  "checkedAt": "2026-08-30T04:18:01.481Z",
+  "routes": [
+    {
+      "path": "/",
+      "status": 200,
+      "title": "Change Recovery Ledger — Reverse agent changes",
+      "lang": "en",
+      "mainCount": 1,
+      "h1Count": 1,
+      "headerLinks": [
+        "/",
+        "/demo",
+        "/app",
+        "/#how",
+        "/privacy"
+      ],
+      "footerLinks": [
+        "/privacy",
+        "/terms",
+        "https://sociobot.in"
+      ],
+      "build": "Original generated artwork · v0.1.12 · build 2026.08.30",
+      "seriousAxe": []
+    },
+    {
+      "path": "/demo",
+      "status": 200,
+      "title": "Demo — Change Recovery Ledger",
+      "lang": "en",
+      "mainCount": 1,
+      "h1Count": 1,
+      "headerLinks": [
+        "/",
+        "/demo",
+        "/app",
+        "/#how",
+        "/privacy"
+      ],
+      "footerLinks": [
+        "/privacy",
+        "/terms",
+        "https://sociobot.in"
+      ],
+      "build": "Original generated artwork · v0.1.12 · build 2026.08.30",
+      "seriousAxe": []
+    },
+    {
+      "path": "/app",
+      "status": 200,
+      "title": "Ledger — Change Recovery Ledger",
+      "lang": "en",
+      "mainCount": 1,
+      "h1Count": 1,
+      "headerLinks": [
+        "/",
+        "/demo",
+        "/app",
+        "/#how",
+        "/privacy"
+      ],
+      "footerLinks": [
+        "/privacy",
+        "/terms",
+        "https://sociobot.in"
+      ],
+      "build": "Original generated artwork · v0.1.12 · build 2026.08.30",
+      "seriousAxe": []
+    },
+    {
+      "path": "/privacy",
+      "status": 200,
+      "title": "Privacy — Change Recovery Ledger",
+      "lang": "en",
+      "mainCount": 1,
+      "h1Count": 1,
+      "headerLinks": [
+        "/",
+        "/demo",
+        "/app",
+        "/#how",
+        "/privacy"
+      ],
+      "footerLinks": [
+        "/privacy",
+        "/terms",
+        "https://sociobot.in"
+      ],
+      "build": "Original generated artwork · v0.1.12 · build 2026.08.30",
+      "seriousAxe": []
+    },
+    {
+      "path": "/terms",
+      "status": 200,
+      "title": "Terms — Change Recovery Ledger",
+      "lang": "en",
+      "mainCount": 1,
+      "h1Count": 1,
+      "headerLinks": [
+        "/",
+        "/demo",
+        "/app",
+        "/#how",
+        "/privacy"
+      ],
+      "footerLinks": [
+        "/privacy",
+        "/terms",
+        "https://sociobot.in"
+      ],
+      "build": "Original generated artwork · v0.1.12 · build 2026.08.30",
+      "seriousAxe": []
+    },
+    {
+      "path": "/missing-sheet",
+      "status": 404,
+      "title": "Not found — Change Recovery Ledger",
+      "lang": "en",
+      "mainCount": 1,
+      "h1Count": 1,
+      "headerLinks": [
+        "/",
+        "/demo",
+        "/app",
+        "/#how",
+        "/privacy"
+      ],
+      "footerLinks": [
+        "/privacy",
+        "/terms",
+        "https://sociobot.in"
+      ],
+      "build": "Original generated artwork · v0.1.12 · build 2026.08.30",
+      "seriousAxe": []
+    }
+  ],
+  "consoleErrors": [],
+  "demoOrigins": [
+    "https://agent-change-recovery.sociobot.in"
+  ],
+  "firstScreen": {
+    "h1": "Reverse the wrong agent changes",
+    "action": "Try it with sample data",
+    "factsBottom": 723,
+    "viewportHeight": 844,
+    "scrollWidth": 390,
+    "viewportWidth": 390,
+    "merchantLanguage": false,
+    "macLabels": [
+      "Download for Apple silicon",
+      "Download for Intel Mac"
+    ]
+  },
+  "download": {
+    "href": "https://github.com/B-Divyesh/sf-agent-change-recovery/releases/download/v0.1.12/Change.Recovery.Ledger_0.1.12_amd64.AppImage",
+    "status": "v0.1.12 · Change.Recovery.Ledger_0.1.12_amd64.AppImage"
+  },
+  "history": {
+    "scrollY": 0,
+    "headingFocused": true,
+    "headingTop": 98
+  },
+  "demo": {
+    "url": "https://agent-change-recovery.sociobot.in/?demo=1",
+    "banner": true,
+    "checkpoints": 4,
+    "heading": "Inspect the failed session change",
+    "resetKeys": [],
+    "sentinelAfterReset": "keep",
+    "exitKeys": [],
+    "sentinelAfterExit": "keep",
+    "downloadVisible": true
+  },
+  "offline": {
+    "title": "Demo — Change Recovery Ledger",
+    "heading": "Inspect the failed session change",
+    "banner": true,
+    "notice": "You are offline. Saved ledgers and the demo still work.",
+    "controlled": true
+  }
+}
