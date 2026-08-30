@@ -2,7 +2,7 @@
 
 ## Result
 
-All release-blocking findings in `.factory/verification-11.md` are repaired for Change Recovery Ledger 0.1.10. The researched brief, Tauri desktop artifact, static deployment class, local-first recovery behavior, and passing product flows are unchanged.
+All release-blocking findings in `.factory/verification-11.md` are repaired for Change Recovery Ledger 0.1.11. The researched brief, Tauri desktop artifact, static deployment class, local-first recovery behavior, and passing product flows are unchanged.
 
 ## Repairs
 
@@ -28,7 +28,7 @@ All release-blocking findings in `.factory/verification-11.md` are repaired for 
 - Production build: `npm run build` produced `dist/site`; initial JS is 43.03 KB raw / 13.69 KB gzip and CSS is 15.78 KB raw / 4.36 KB gzip.
 - Local response smoke: `scripts/verify-url.sh` passed `/`, `/?demo=1`, `/app`, `/privacy`, `/terms`, and `/404` with valid title/lang/main/h1/alt and zero console errors.
 - Accessibility: all Axe serious/critical counts are zero. Mobile Lighthouse 13 scored performance 99, accessibility 100, best practices 100, and SEO 100; LCP 2.1 s, TBT 60 ms, CLS 0.
-- Packaging: a fresh `Change Recovery Ledger_0.1.10_amd64.AppImage` built successfully. SHA-256 was `e395b9f96524024e48bb48bc96bc13b39314eb5eefcc1ee23fe9dea5bbd6cbf1`; its 12-second Xvfb smoke had no host-library module failures.
+- Packaging: a fresh `Change Recovery Ledger_0.1.11_amd64.AppImage` built successfully. SHA-256 was `a38091cd0a9ccaa24e35fa0a2e0d5b7aff07b4984504380966e03b5c96371716`; its 12-second Xvfb smoke had no host-library module failures.
 - Copy: `.factory/copy-audit.md` contains 42 audited lines; none exceeds 22 words or uses a banned marketing word.
 
 ## Run it
@@ -42,14 +42,14 @@ cargo fmt --manifest-path src-tauri/Cargo.toml --check
 cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 cargo test --manifest-path src-tauri/Cargo.toml
 CI=true APPIMAGE_EXTRACT_AND_RUN=1 npm run tauri -- build --bundles appimage
-bash scripts/smoke-appimage.sh "src-tauri/target/release/bundle/appimage/Change Recovery Ledger_0.1.10_amd64.AppImage"
+bash scripts/smoke-appimage.sh "src-tauri/target/release/bundle/appimage/Change Recovery Ledger_0.1.11_amd64.AppImage"
 ```
 
 The release workflow builds macOS arm64 and Intel disk images, Windows MSI/EXE files, and Linux AppImage/DEB/RPM files. It publishes `SHA256SUMS` and `latest.json` only after the Ubuntu 24.04 AppImage smoke passes.
 
 ## Release and deployment evidence
 
-Release `v0.1.10` and the static deployment are being published from this repair. Final workflow, asset checksum, live header, live identity, and route evidence will be appended after publication.
+Release `v0.1.11` and the static deployment are being published from this repair. Final workflow, asset checksum, live header, live identity, and route evidence will be appended after publication.
 
 ## Known gaps and operator action
 

@@ -40,7 +40,7 @@ declare global {
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const product = 'Change Recovery Ledger';
-const appVersion = '0.1.10';
+const appVersion = '0.1.11';
 const demoKey = 'demo:agent-change-recovery:ledger';
 const releasePage = 'https://github.com/B-Divyesh/sf-agent-change-recovery/releases';
 const releaseCacheKey = `release:agent-change-recovery:${appVersion}`;

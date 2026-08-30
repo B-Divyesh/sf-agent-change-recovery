@@ -262,7 +262,7 @@ test('service worker installs the shipped shell, updates its cache, and keeps th
     const registration = await navigator.serviceWorker.getRegistration();
     await registration?.update();
     const keys = await caches.keys();
-    const cache = await caches.open('recovery-ledger-v8');
+    const cache = await caches.open('recovery-ledger-v9');
     return {
       active: registration?.active?.state,
       script: registration?.active?.scriptURL,
@@ -273,7 +273,7 @@ test('service worker installs the shipped shell, updates its cache, and keeps th
   });
   expect(installed.active).toBe('activated');
   expect(installed.script).toContain('/sw.js');
-  expect(installed.keys).toContain('recovery-ledger-v8');
+  expect(installed.keys).toContain('recovery-ledger-v9');
   expect(installed.cachedDemo).toBe(true);
   expect(installed.cachedShell).toBe(true);
   await context.setOffline(true);
@@ -543,6 +543,7 @@ test('Linux AppImage packaging installs its required tool and verifies the gener
   expect(workflow).toContain('Prepare the pinned Linuxdeploy GTK helper');
   expect(workflow).toContain('Verify Linux installers');
   expect(workflow).toContain('runs-on: ubuntu-24.04');
+  expect(workflow).toContain('libegl1 libgles2 libfuse2 xvfb');
   expect(workflow).toContain('scripts/smoke-appimage.sh');
   expect(workflow).not.toContain('GITHUB_REF_NAME');
   expect(workflow).toContain('bundle/appimage/*.AppImage');
