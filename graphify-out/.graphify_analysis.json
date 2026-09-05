@@ -3,12 +3,17 @@
     "0": [
       "apphandle",
       "btreemap",
+      "cstring",
+      "file",
+      "option",
+      "osstr",
       "path",
       "pathbuf",
       "result",
       "src_tauri_src_lib",
       "src_tauri_src_lib_append_patch_lines",
       "src_tauri_src_lib_assert_replaced_symlink_parent_is_rejected",
+      "src_tauri_src_lib_c_string",
       "src_tauri_src_lib_capture_checkpoint",
       "src_tauri_src_lib_capturecheckpointinput",
       "src_tauri_src_lib_changes_between",
@@ -20,13 +25,14 @@
       "src_tauri_src_lib_claim_checkpoint_comparison_uses_the_previous_snapshot",
       "src_tauri_src_lib_claim_checkpoint_record_keeps_request_commands_files_and_check_result",
       "src_tauri_src_lib_claim_chosen_folder_only",
+      "src_tauri_src_lib_claim_current_folder_comparison_reads_the_live_folder",
       "src_tauri_src_lib_claim_encrypted_export",
       "src_tauri_src_lib_claim_encrypted_import_opens_a_patch_without_running_it",
       "src_tauri_src_lib_claim_generated_folder_exclusions",
       "src_tauri_src_lib_claim_git_metadata_exclusion",
       "src_tauri_src_lib_claim_large_file_skip",
       "src_tauri_src_lib_claim_ledger_deletion_removes_snapshots_not_project_files",
-      "src_tauri_src_lib_claim_local_encryption_keeps_project_content_out_of_ledger_files",
+      "src_tauri_src_lib_claim_local_encryption_keeps_project_content_and_passphrase_out_of_storage",
       "src_tauri_src_lib_claim_local_privacy",
       "src_tauri_src_lib_claim_patch_export_is_standard_unified_diff_and_dry_runs",
       "src_tauri_src_lib_claim_retention_prunes_old_checkpoints_and_keeps_boundary_recovery",
@@ -34,12 +40,15 @@
       "src_tauri_src_lib_claim_reversible_safety_checkpoint",
       "src_tauri_src_lib_claim_team_policy_note_is_encrypted_with_the_ledger",
       "src_tauri_src_lib_clock_label",
+      "src_tauri_src_lib_compare_checkpoint_with_folder_in_store",
+      "src_tauri_src_lib_compare_with_folder",
       "src_tauri_src_lib_create_ledger_store",
       "src_tauri_src_lib_decrypt_bytes",
       "src_tauri_src_lib_decrypt_from_ledger",
       "src_tauri_src_lib_delete_ledger",
       "src_tauri_src_lib_delete_ledger_store",
       "src_tauri_src_lib_derive_ledger_key",
+      "src_tauri_src_lib_describe_change",
       "src_tauri_src_lib_encrypt_bytes",
       "src_tauri_src_lib_encrypt_for_ledger",
       "src_tauri_src_lib_enforce_plan_retention",
@@ -63,6 +72,8 @@
       "src_tauri_src_lib_now_id",
       "src_tauri_src_lib_open_encrypted_store",
       "src_tauri_src_lib_open_ledger_store",
+      "src_tauri_src_lib_open_project_directory",
+      "src_tauri_src_lib_open_restore_parent",
       "src_tauri_src_lib_patch_lines",
       "src_tauri_src_lib_patch_text",
       "src_tauri_src_lib_patchlines",
@@ -87,6 +98,7 @@
       "src_tauri_src_lib_storage_path",
       "src_tauri_src_lib_storekeyinfo",
       "src_tauri_src_lib_test_crypto",
+      "src_tauri_src_lib_text_lines",
       "src_tauri_src_lib_validate_retention",
       "src_tauri_src_lib_verify_restore_destination",
       "src_tauri_src_lib_write_atomic",
@@ -104,6 +116,7 @@
       "src_main_capturelicensefromurl",
       "src_main_checkpoint",
       "src_main_closedialog",
+      "src_main_comparewithfolder",
       "src_main_completedemorestore",
       "src_main_completerestore",
       "src_main_currentpath",
@@ -168,84 +181,75 @@
       "src_main_window"
     ],
     "2": [
-      "src_tauri_gen_schemas_linux_schema_capability_properties",
-      "src_tauri_gen_schemas_linux_schema_definitions_identifier",
-      "src_tauri_gen_schemas_linux_schema_description_default",
-      "src_tauri_gen_schemas_linux_schema_description_description",
-      "src_tauri_gen_schemas_linux_schema_description_type",
-      "src_tauri_gen_schemas_linux_schema_identifier_description",
-      "src_tauri_gen_schemas_linux_schema_identifier_oneof",
-      "src_tauri_gen_schemas_linux_schema_identifier_type",
-      "src_tauri_gen_schemas_linux_schema_items_ref",
-      "src_tauri_gen_schemas_linux_schema_items_type",
-      "src_tauri_gen_schemas_linux_schema_json_ref_array",
-      "src_tauri_gen_schemas_linux_schema_json_ref_null",
-      "src_tauri_gen_schemas_linux_schema_local_default",
-      "src_tauri_gen_schemas_linux_schema_local_description",
-      "src_tauri_gen_schemas_linux_schema_local_type",
-      "src_tauri_gen_schemas_linux_schema_permissions_description",
-      "src_tauri_gen_schemas_linux_schema_permissions_items",
-      "src_tauri_gen_schemas_linux_schema_permissions_type",
-      "src_tauri_gen_schemas_linux_schema_permissions_uniqueitems",
-      "src_tauri_gen_schemas_linux_schema_platforms_description",
-      "src_tauri_gen_schemas_linux_schema_platforms_items",
-      "src_tauri_gen_schemas_linux_schema_platforms_type",
-      "src_tauri_gen_schemas_linux_schema_properties_description",
-      "src_tauri_gen_schemas_linux_schema_properties_identifier",
-      "src_tauri_gen_schemas_linux_schema_properties_local",
-      "src_tauri_gen_schemas_linux_schema_properties_permissions",
-      "src_tauri_gen_schemas_linux_schema_properties_platforms",
-      "src_tauri_gen_schemas_linux_schema_properties_remote",
-      "src_tauri_gen_schemas_linux_schema_properties_webviews",
-      "src_tauri_gen_schemas_linux_schema_properties_windows",
-      "src_tauri_gen_schemas_linux_schema_remote_anyof",
-      "src_tauri_gen_schemas_linux_schema_remote_description",
-      "src_tauri_gen_schemas_linux_schema_urls_items",
-      "src_tauri_gen_schemas_linux_schema_webviews_description",
-      "src_tauri_gen_schemas_linux_schema_webviews_items",
-      "src_tauri_gen_schemas_linux_schema_webviews_type",
-      "src_tauri_gen_schemas_linux_schema_windows_description",
-      "src_tauri_gen_schemas_linux_schema_windows_items",
-      "src_tauri_gen_schemas_linux_schema_windows_type"
+      "src_tauri_gen_schemas_desktop_schema_capability_properties",
+      "src_tauri_gen_schemas_desktop_schema_description_default",
+      "src_tauri_gen_schemas_desktop_schema_description_description",
+      "src_tauri_gen_schemas_desktop_schema_description_type",
+      "src_tauri_gen_schemas_desktop_schema_identifier_type",
+      "src_tauri_gen_schemas_desktop_schema_items_ref",
+      "src_tauri_gen_schemas_desktop_schema_items_type",
+      "src_tauri_gen_schemas_desktop_schema_json_ref_array",
+      "src_tauri_gen_schemas_desktop_schema_json_ref_null",
+      "src_tauri_gen_schemas_desktop_schema_local_default",
+      "src_tauri_gen_schemas_desktop_schema_local_description",
+      "src_tauri_gen_schemas_desktop_schema_local_type",
+      "src_tauri_gen_schemas_desktop_schema_permissions_description",
+      "src_tauri_gen_schemas_desktop_schema_permissions_items",
+      "src_tauri_gen_schemas_desktop_schema_permissions_type",
+      "src_tauri_gen_schemas_desktop_schema_permissions_uniqueitems",
+      "src_tauri_gen_schemas_desktop_schema_platforms_description",
+      "src_tauri_gen_schemas_desktop_schema_platforms_items",
+      "src_tauri_gen_schemas_desktop_schema_platforms_type",
+      "src_tauri_gen_schemas_desktop_schema_properties_description",
+      "src_tauri_gen_schemas_desktop_schema_properties_identifier",
+      "src_tauri_gen_schemas_desktop_schema_properties_local",
+      "src_tauri_gen_schemas_desktop_schema_properties_permissions",
+      "src_tauri_gen_schemas_desktop_schema_properties_platforms",
+      "src_tauri_gen_schemas_desktop_schema_properties_remote",
+      "src_tauri_gen_schemas_desktop_schema_properties_webviews",
+      "src_tauri_gen_schemas_desktop_schema_properties_windows",
+      "src_tauri_gen_schemas_desktop_schema_remote_anyof",
+      "src_tauri_gen_schemas_desktop_schema_remote_description",
+      "src_tauri_gen_schemas_desktop_schema_urls_items",
+      "src_tauri_gen_schemas_desktop_schema_webviews_description",
+      "src_tauri_gen_schemas_desktop_schema_webviews_items",
+      "src_tauri_gen_schemas_desktop_schema_webviews_type",
+      "src_tauri_gen_schemas_desktop_schema_windows_description",
+      "src_tauri_gen_schemas_desktop_schema_windows_items",
+      "src_tauri_gen_schemas_desktop_schema_windows_type"
     ],
     "3": [
-      "src_tauri_gen_schemas_desktop_schema_capability_description",
-      "src_tauri_gen_schemas_desktop_schema_capability_required",
-      "src_tauri_gen_schemas_desktop_schema_capability_type",
-      "src_tauri_gen_schemas_desktop_schema_definitions_capability",
-      "src_tauri_gen_schemas_linux_schema",
-      "src_tauri_gen_schemas_linux_schema_anyof",
-      "src_tauri_gen_schemas_linux_schema_capability_description",
-      "src_tauri_gen_schemas_linux_schema_capability_required",
-      "src_tauri_gen_schemas_linux_schema_capability_type",
-      "src_tauri_gen_schemas_linux_schema_capabilityremote_description",
-      "src_tauri_gen_schemas_linux_schema_capabilityremote_properties",
-      "src_tauri_gen_schemas_linux_schema_capabilityremote_required",
-      "src_tauri_gen_schemas_linux_schema_capabilityremote_type",
-      "src_tauri_gen_schemas_linux_schema_definitions",
-      "src_tauri_gen_schemas_linux_schema_definitions_capability",
-      "src_tauri_gen_schemas_linux_schema_definitions_capabilityremote",
-      "src_tauri_gen_schemas_linux_schema_definitions_number",
-      "src_tauri_gen_schemas_linux_schema_definitions_permissionentry",
-      "src_tauri_gen_schemas_linux_schema_definitions_target",
-      "src_tauri_gen_schemas_linux_schema_definitions_value",
-      "src_tauri_gen_schemas_linux_schema_description",
-      "src_tauri_gen_schemas_linux_schema_json_ref_identifier",
-      "src_tauri_gen_schemas_linux_schema_json_ref_permissions",
-      "src_tauri_gen_schemas_linux_schema_json_ref_urls",
-      "src_tauri_gen_schemas_linux_schema_number_anyof",
-      "src_tauri_gen_schemas_linux_schema_number_description",
-      "src_tauri_gen_schemas_linux_schema_permissionentry_anyof",
-      "src_tauri_gen_schemas_linux_schema_permissionentry_description",
-      "src_tauri_gen_schemas_linux_schema_properties_urls",
-      "src_tauri_gen_schemas_linux_schema_schema",
-      "src_tauri_gen_schemas_linux_schema_target_description",
-      "src_tauri_gen_schemas_linux_schema_target_oneof",
-      "src_tauri_gen_schemas_linux_schema_title",
-      "src_tauri_gen_schemas_linux_schema_urls_description",
-      "src_tauri_gen_schemas_linux_schema_urls_type",
-      "src_tauri_gen_schemas_linux_schema_value_anyof",
-      "src_tauri_gen_schemas_linux_schema_value_description"
+      "axe_core_playwright",
+      "package",
+      "package_dependencies",
+      "package_dependencies_tauri_apps_api",
+      "package_devdependencies",
+      "package_devdependencies_axe_core_playwright",
+      "package_devdependencies_playwright_test",
+      "package_devdependencies_tauri_apps_cli",
+      "package_devdependencies_types_node",
+      "package_devdependencies_typescript",
+      "package_devdependencies_vite",
+      "package_name",
+      "package_private",
+      "package_scripts",
+      "package_scripts_build",
+      "package_scripts_build_site",
+      "package_scripts_dev",
+      "package_scripts_tauri",
+      "package_scripts_test",
+      "package_scripts_test_claim_tags",
+      "package_scripts_test_claims",
+      "package_scripts_test_e2e",
+      "package_scripts_verify_paid_checkout",
+      "package_type",
+      "package_version",
+      "playwright_test",
+      "tauri_apps_api",
+      "tauri_apps_cli",
+      "types_node",
+      "typescript",
+      "vite"
     ],
     "4": [
       "ref_icons_128x128_2x_png",
@@ -280,37 +284,62 @@
       "src_tauri_tauri_conf_version"
     ],
     "5": [
-      "axe_core_playwright",
-      "package",
-      "package_dependencies",
-      "package_dependencies_tauri_apps_api",
-      "package_devdependencies",
-      "package_devdependencies_axe_core_playwright",
-      "package_devdependencies_playwright_test",
-      "package_devdependencies_tauri_apps_cli",
-      "package_devdependencies_types_node",
-      "package_devdependencies_typescript",
-      "package_devdependencies_vite",
-      "package_name",
-      "package_private",
-      "package_scripts",
-      "package_scripts_build",
-      "package_scripts_build_site",
-      "package_scripts_dev",
-      "package_scripts_tauri",
-      "package_scripts_test",
-      "package_scripts_test_e2e",
-      "package_scripts_verify_paid_checkout",
-      "package_type",
-      "package_version",
-      "playwright_test",
-      "tauri_apps_api",
-      "tauri_apps_cli",
-      "types_node",
-      "typescript",
-      "vite"
+      "src_tauri_gen_schemas_desktop_schema",
+      "src_tauri_gen_schemas_desktop_schema_anyof",
+      "src_tauri_gen_schemas_desktop_schema_capabilityremote_description",
+      "src_tauri_gen_schemas_desktop_schema_capabilityremote_properties",
+      "src_tauri_gen_schemas_desktop_schema_capabilityremote_required",
+      "src_tauri_gen_schemas_desktop_schema_capabilityremote_type",
+      "src_tauri_gen_schemas_desktop_schema_definitions",
+      "src_tauri_gen_schemas_desktop_schema_definitions_capabilityremote",
+      "src_tauri_gen_schemas_desktop_schema_definitions_identifier",
+      "src_tauri_gen_schemas_desktop_schema_definitions_number",
+      "src_tauri_gen_schemas_desktop_schema_definitions_permissionentry",
+      "src_tauri_gen_schemas_desktop_schema_definitions_target",
+      "src_tauri_gen_schemas_desktop_schema_definitions_value",
+      "src_tauri_gen_schemas_desktop_schema_description",
+      "src_tauri_gen_schemas_desktop_schema_identifier_description",
+      "src_tauri_gen_schemas_desktop_schema_identifier_oneof",
+      "src_tauri_gen_schemas_desktop_schema_json_ref_urls",
+      "src_tauri_gen_schemas_desktop_schema_number_anyof",
+      "src_tauri_gen_schemas_desktop_schema_number_description",
+      "src_tauri_gen_schemas_desktop_schema_permissionentry_anyof",
+      "src_tauri_gen_schemas_desktop_schema_permissionentry_description",
+      "src_tauri_gen_schemas_desktop_schema_properties_urls",
+      "src_tauri_gen_schemas_desktop_schema_schema",
+      "src_tauri_gen_schemas_desktop_schema_target_description",
+      "src_tauri_gen_schemas_desktop_schema_target_oneof",
+      "src_tauri_gen_schemas_desktop_schema_title",
+      "src_tauri_gen_schemas_desktop_schema_urls_description",
+      "src_tauri_gen_schemas_desktop_schema_urls_type",
+      "src_tauri_gen_schemas_desktop_schema_value_anyof",
+      "src_tauri_gen_schemas_desktop_schema_value_description"
     ],
     "6": [
+      "scripts_release_proof_lib",
+      "scripts_release_proof_lib_asset",
+      "scripts_release_proof_lib_candidaterelease",
+      "scripts_release_proof_lib_checksummap",
+      "scripts_release_proof_lib_download",
+      "scripts_release_proof_lib_github",
+      "scripts_release_proof_lib_repo",
+      "scripts_release_proof_lib_sha256",
+      "scripts_release_proof_lib_tag",
+      "scripts_release_proof_lib_version",
+      "scripts_verify_published_release",
+      "scripts_verify_published_release_manifest",
+      "scripts_verify_published_release_manifestasset",
+      "scripts_verify_published_release_manifestnames",
+      "scripts_verify_published_release_platformassets",
+      "scripts_verify_published_release_sums",
+      "scripts_verify_published_release_sumsasset",
+      "scripts_verify_windows_consumer_proof",
+      "scripts_verify_windows_consumer_proof_installerasset",
+      "scripts_verify_windows_consumer_proof_proof",
+      "scripts_verify_windows_consumer_proof_proofasset",
+      "scripts_verify_windows_consumer_proof_sums"
+    ],
+    "7": [
       "ref_dom",
       "ref_dom_iterable",
       "ref_esnext",
@@ -331,75 +360,103 @@
       "tsconfig_compileroptions_usedefineforclassfields",
       "tsconfig_include"
     ],
-    "7": [
+    "8": [
       "client",
+      "direntry",
       "joinhandle",
-      "option",
       "src_tauri_src_lib_billing_client",
-      "src_tauri_src_lib_describe_change",
       "src_tauri_src_lib_get_product_listing",
       "src_tauri_src_lib_get_product_listing_from",
+      "src_tauri_src_lib_ignored",
       "src_tauri_src_lib_licenseverdict",
       "src_tauri_src_lib_packaged_billing_uses_native_http_without_a_web_origin",
       "src_tauri_src_lib_productcatalog",
       "src_tauri_src_lib_productlisting",
       "src_tauri_src_lib_serve_recorded_json",
-      "src_tauri_src_lib_text_lines",
       "src_tauri_src_lib_verify_license",
       "src_tauri_src_lib_verify_license_from"
     ],
-    "8": [
-      "src_tauri_gen_schemas_desktop_schema",
-      "src_tauri_gen_schemas_desktop_schema_anyof",
-      "src_tauri_gen_schemas_desktop_schema_definitions",
-      "src_tauri_gen_schemas_desktop_schema_definitions_number",
-      "src_tauri_gen_schemas_desktop_schema_definitions_permissionentry",
-      "src_tauri_gen_schemas_desktop_schema_definitions_value",
-      "src_tauri_gen_schemas_desktop_schema_description",
-      "src_tauri_gen_schemas_desktop_schema_number_anyof",
-      "src_tauri_gen_schemas_desktop_schema_number_description",
-      "src_tauri_gen_schemas_desktop_schema_permissionentry_anyof",
-      "src_tauri_gen_schemas_desktop_schema_permissionentry_description",
-      "src_tauri_gen_schemas_desktop_schema_schema",
-      "src_tauri_gen_schemas_desktop_schema_title",
-      "src_tauri_gen_schemas_desktop_schema_value_anyof",
-      "src_tauri_gen_schemas_desktop_schema_value_description"
-    ],
     "9": [
-      "src_tauri_gen_schemas_desktop_schema_items_type",
-      "src_tauri_gen_schemas_desktop_schema_properties_webviews",
-      "src_tauri_gen_schemas_desktop_schema_properties_windows",
-      "src_tauri_gen_schemas_desktop_schema_urls_items",
-      "src_tauri_gen_schemas_desktop_schema_webviews_description",
-      "src_tauri_gen_schemas_desktop_schema_webviews_items",
-      "src_tauri_gen_schemas_desktop_schema_webviews_type",
-      "src_tauri_gen_schemas_desktop_schema_windows_description",
-      "src_tauri_gen_schemas_desktop_schema_windows_items",
-      "src_tauri_gen_schemas_desktop_schema_windows_type"
+      "src_tauri_gen_schemas_linux_schema_capability_properties",
+      "src_tauri_gen_schemas_linux_schema_description_default",
+      "src_tauri_gen_schemas_linux_schema_description_description",
+      "src_tauri_gen_schemas_linux_schema_description_type",
+      "src_tauri_gen_schemas_linux_schema_identifier_type",
+      "src_tauri_gen_schemas_linux_schema_local_default",
+      "src_tauri_gen_schemas_linux_schema_local_description",
+      "src_tauri_gen_schemas_linux_schema_local_type",
+      "src_tauri_gen_schemas_linux_schema_properties_description",
+      "src_tauri_gen_schemas_linux_schema_properties_identifier",
+      "src_tauri_gen_schemas_linux_schema_properties_local",
+      "src_tauri_gen_schemas_linux_schema_properties_remote",
+      "src_tauri_gen_schemas_linux_schema_remote_anyof",
+      "src_tauri_gen_schemas_linux_schema_remote_description"
     ],
     "10": [
-      "src_tauri_gen_schemas_desktop_schema_capability_properties",
-      "src_tauri_gen_schemas_desktop_schema_definitions_identifier",
-      "src_tauri_gen_schemas_desktop_schema_identifier_description",
-      "src_tauri_gen_schemas_desktop_schema_identifier_oneof",
-      "src_tauri_gen_schemas_desktop_schema_identifier_type",
-      "src_tauri_gen_schemas_desktop_schema_properties_identifier",
-      "src_tauri_gen_schemas_desktop_schema_properties_remote",
-      "src_tauri_gen_schemas_desktop_schema_remote_anyof",
-      "src_tauri_gen_schemas_desktop_schema_remote_description"
+      "src_tauri_gen_schemas_linux_schema_definitions",
+      "src_tauri_gen_schemas_linux_schema_definitions_number",
+      "src_tauri_gen_schemas_linux_schema_definitions_permissionentry",
+      "src_tauri_gen_schemas_linux_schema_definitions_target",
+      "src_tauri_gen_schemas_linux_schema_definitions_value",
+      "src_tauri_gen_schemas_linux_schema_number_anyof",
+      "src_tauri_gen_schemas_linux_schema_number_description",
+      "src_tauri_gen_schemas_linux_schema_permissionentry_anyof",
+      "src_tauri_gen_schemas_linux_schema_permissionentry_description",
+      "src_tauri_gen_schemas_linux_schema_target_description",
+      "src_tauri_gen_schemas_linux_schema_target_oneof",
+      "src_tauri_gen_schemas_linux_schema_value_anyof",
+      "src_tauri_gen_schemas_linux_schema_value_description"
     ],
     "11": [
-      "src_tauri_gen_schemas_desktop_schema_capabilityremote_description",
-      "src_tauri_gen_schemas_desktop_schema_capabilityremote_properties",
-      "src_tauri_gen_schemas_desktop_schema_capabilityremote_required",
-      "src_tauri_gen_schemas_desktop_schema_capabilityremote_type",
-      "src_tauri_gen_schemas_desktop_schema_definitions_capabilityremote",
-      "src_tauri_gen_schemas_desktop_schema_json_ref_urls",
-      "src_tauri_gen_schemas_desktop_schema_properties_urls",
-      "src_tauri_gen_schemas_desktop_schema_urls_description",
-      "src_tauri_gen_schemas_desktop_schema_urls_type"
+      "src_tauri_gen_schemas_linux_schema_items_ref",
+      "src_tauri_gen_schemas_linux_schema_json_ref_array",
+      "src_tauri_gen_schemas_linux_schema_json_ref_null",
+      "src_tauri_gen_schemas_linux_schema_permissions_description",
+      "src_tauri_gen_schemas_linux_schema_permissions_items",
+      "src_tauri_gen_schemas_linux_schema_permissions_type",
+      "src_tauri_gen_schemas_linux_schema_permissions_uniqueitems",
+      "src_tauri_gen_schemas_linux_schema_platforms_description",
+      "src_tauri_gen_schemas_linux_schema_platforms_items",
+      "src_tauri_gen_schemas_linux_schema_platforms_type",
+      "src_tauri_gen_schemas_linux_schema_properties_permissions",
+      "src_tauri_gen_schemas_linux_schema_properties_platforms"
     ],
     "12": [
+      "src_tauri_gen_schemas_desktop_schema_capability_description",
+      "src_tauri_gen_schemas_desktop_schema_capability_required",
+      "src_tauri_gen_schemas_desktop_schema_capability_type",
+      "src_tauri_gen_schemas_desktop_schema_definitions_capability",
+      "src_tauri_gen_schemas_linux_schema_capability_description",
+      "src_tauri_gen_schemas_linux_schema_capability_required",
+      "src_tauri_gen_schemas_linux_schema_capability_type",
+      "src_tauri_gen_schemas_linux_schema_definitions_capability",
+      "src_tauri_gen_schemas_linux_schema_json_ref_identifier",
+      "src_tauri_gen_schemas_linux_schema_json_ref_permissions"
+    ],
+    "13": [
+      "src_tauri_gen_schemas_linux_schema_items_type",
+      "src_tauri_gen_schemas_linux_schema_properties_webviews",
+      "src_tauri_gen_schemas_linux_schema_properties_windows",
+      "src_tauri_gen_schemas_linux_schema_urls_items",
+      "src_tauri_gen_schemas_linux_schema_webviews_description",
+      "src_tauri_gen_schemas_linux_schema_webviews_items",
+      "src_tauri_gen_schemas_linux_schema_webviews_type",
+      "src_tauri_gen_schemas_linux_schema_windows_description",
+      "src_tauri_gen_schemas_linux_schema_windows_items",
+      "src_tauri_gen_schemas_linux_schema_windows_type"
+    ],
+    "14": [
+      "src_tauri_gen_schemas_linux_schema_capabilityremote_description",
+      "src_tauri_gen_schemas_linux_schema_capabilityremote_properties",
+      "src_tauri_gen_schemas_linux_schema_capabilityremote_required",
+      "src_tauri_gen_schemas_linux_schema_capabilityremote_type",
+      "src_tauri_gen_schemas_linux_schema_definitions_capabilityremote",
+      "src_tauri_gen_schemas_linux_schema_json_ref_urls",
+      "src_tauri_gen_schemas_linux_schema_properties_urls",
+      "src_tauri_gen_schemas_linux_schema_urls_description",
+      "src_tauri_gen_schemas_linux_schema_urls_type"
+    ],
+    "15": [
       "ref_core_default",
       "ref_main",
       "src_tauri_capabilities_default",
@@ -409,24 +466,16 @@
       "src_tauri_capabilities_default_schema",
       "src_tauri_capabilities_default_windows"
     ],
-    "13": [
-      "src_tauri_gen_schemas_desktop_schema_items_ref",
-      "src_tauri_gen_schemas_desktop_schema_permissions_description",
-      "src_tauri_gen_schemas_desktop_schema_permissions_items",
-      "src_tauri_gen_schemas_desktop_schema_permissions_type",
-      "src_tauri_gen_schemas_desktop_schema_permissions_uniqueitems",
-      "src_tauri_gen_schemas_desktop_schema_platforms_items",
-      "src_tauri_gen_schemas_desktop_schema_properties_permissions"
+    "16": [
+      "scripts_verify_claim_tags",
+      "scripts_verify_claim_tags_claims",
+      "scripts_verify_claim_tags_files",
+      "scripts_verify_claim_tags_found",
+      "scripts_verify_claim_tags_ids",
+      "scripts_verify_claim_tags_source",
+      "scripts_verify_claim_tags_unlisted"
     ],
-    "14": [
-      "cstring",
-      "file",
-      "osstr",
-      "src_tauri_src_lib_c_string",
-      "src_tauri_src_lib_open_project_directory",
-      "src_tauri_src_lib_open_restore_parent"
-    ],
-    "15": [
+    "17": [
       "factory_evidence_verification_6_fresh_live",
       "factory_evidence_verification_6_fresh_live_consoleerrors",
       "factory_evidence_verification_6_fresh_live_downloadpromise",
@@ -434,7 +483,7 @@
       "factory_evidence_verification_6_fresh_live_patch",
       "factory_evidence_verification_6_fresh_live_requests"
     ],
-    "16": [
+    "18": [
       "scripts_verify_release",
       "scripts_verify_release_checksum_map",
       "scripts_verify_release_fail",
@@ -442,31 +491,19 @@
       "scripts_verify_release_matching_asset",
       "scripts_verify_release_sha256"
     ],
-    "17": [
+    "19": [
       "factory_evidence_live_qa",
       "factory_evidence_live_qa_auditroutes",
       "factory_evidence_live_qa_demoflow",
       "factory_evidence_live_qa_keyboardandmobile",
       "factory_evidence_live_qa_pwa"
     ],
-    "18": [
-      "src_tauri_gen_schemas_desktop_schema_json_ref_array",
-      "src_tauri_gen_schemas_desktop_schema_json_ref_null",
-      "src_tauri_gen_schemas_desktop_schema_platforms_description",
-      "src_tauri_gen_schemas_desktop_schema_platforms_type",
-      "src_tauri_gen_schemas_desktop_schema_properties_platforms"
-    ],
-    "19": [
-      "src_tauri_gen_schemas_desktop_schema_description_default",
-      "src_tauri_gen_schemas_desktop_schema_description_description",
-      "src_tauri_gen_schemas_desktop_schema_description_type",
-      "src_tauri_gen_schemas_desktop_schema_properties_description"
-    ],
     "20": [
-      "src_tauri_gen_schemas_desktop_schema_local_default",
-      "src_tauri_gen_schemas_desktop_schema_local_description",
-      "src_tauri_gen_schemas_desktop_schema_local_type",
-      "src_tauri_gen_schemas_desktop_schema_properties_local"
+      "src_tauri_gen_schemas_linux_schema",
+      "src_tauri_gen_schemas_linux_schema_anyof",
+      "src_tauri_gen_schemas_linux_schema_description",
+      "src_tauri_gen_schemas_linux_schema_schema",
+      "src_tauri_gen_schemas_linux_schema_title"
     ],
     "21": [
       "factory_evidence_verification_6_live",
@@ -499,9 +536,9 @@
       "scripts_smoke_appimage_sh__entry"
     ],
     "27": [
-      "src_tauri_gen_schemas_desktop_schema_definitions_target",
-      "src_tauri_gen_schemas_desktop_schema_target_description",
-      "src_tauri_gen_schemas_desktop_schema_target_oneof"
+      "src_tauri_gen_schemas_linux_schema_definitions_identifier",
+      "src_tauri_gen_schemas_linux_schema_identifier_description",
+      "src_tauri_gen_schemas_linux_schema_identifier_oneof"
     ],
     "28": [
       "tests_app_spec",
@@ -509,86 +546,97 @@
       "tests_app_spec_corsheaders"
     ],
     "29": [
-      "direntry",
-      "src_tauri_src_lib_ignored"
-    ],
-    "30": [
       "factory_evidence_verification_6_invalid_input",
       "factory_evidence_verification_6_invalid_input_errors"
     ],
-    "31": [
+    "30": [
       "factory_evidence_verification_6_mobile",
       "factory_evidence_verification_6_mobile_errors"
     ],
-    "32": [
+    "31": [
       "factory_evidence_verification_6_rate_limit",
       "factory_evidence_verification_6_rate_limit_observations"
     ],
-    "33": [
+    "32": [
       "public_install",
       "public_install_sh__entry"
     ],
+    "33": [
+      "scripts_run_claims",
+      "scripts_run_claims_claims"
+    ],
     "34": [
+      "scripts_test_native_privacy",
+      "scripts_test_native_privacy_sh__entry"
+    ],
+    "35": [
+      "scripts_verify_live_polish_2",
+      "scripts_verify_live_polish_2_result"
+    ],
+    "36": [
       "scripts_verify_paid_checkout",
       "scripts_verify_paid_checkout_product"
     ],
-    "35": [
+    "37": [
       "scripts_verify_url",
       "scripts_verify_url_sh__entry"
     ],
-    "36": [
+    "38": [
       "src_tauri_build",
       "src_tauri_build_main"
     ],
-    "37": [
+    "39": [
       "src_tauri_src_main",
       "src_tauri_src_main_main"
     ],
-    "38": [
+    "40": [
       "vite_config",
       "vite_config_injectofflineassets"
     ],
-    "39": [
+    "41": [
       "pkg_change_recovery_ledger"
     ],
-    "40": [
+    "42": [
       "playwright_config"
     ],
-    "41": [
+    "43": [
       "public_404"
     ],
-    "42": [
-      "public_install_ps1_public_install"
-    ],
-    "43": [
+    "44": [
       "scripts_capture_walkthrough"
     ],
-    "44": [
+    "45": [
       "scripts_release_manifest"
+    ],
+    "46": [
+      "scripts_test_windows_installer"
+    ],
+    "47": [
+      "scripts_windows_consumer_proof"
     ]
   },
   "cohesion": {
-    "0": 0.10593505039193729,
-    "1": 0.07155399473222125,
-    "2": 0.05398110661268556,
-    "3": 0.05555555555555555,
+    "0": 0.09504496561453006,
+    "1": 0.07075873827791987,
+    "2": 0.05873015873015873,
+    "3": 0.06451612903225806,
     "4": 0.06666666666666667,
-    "5": 0.06896551724137931,
-    "6": 0.10526315789473684,
-    "7": 0.19047619047619047,
-    "8": 0.13333333333333333,
-    "9": 0.2,
-    "10": 0.2222222222222222,
-    "11": 0.2222222222222222,
-    "12": 0.25,
-    "13": 0.2857142857142857,
-    "14": 0.4666666666666667,
-    "15": 0.3333333333333333,
-    "16": 0.7333333333333333,
-    "17": 0.4,
-    "18": 0.4,
-    "19": 0.5,
-    "20": 0.5,
+    "5": 0.06666666666666667,
+    "6": 0.1471861471861472,
+    "7": 0.10526315789473684,
+    "8": 0.16483516483516483,
+    "9": 0.14285714285714285,
+    "10": 0.15384615384615385,
+    "11": 0.16666666666666666,
+    "12": 0.2222222222222222,
+    "13": 0.2,
+    "14": 0.2222222222222222,
+    "15": 0.25,
+    "16": 0.2857142857142857,
+    "17": 0.3333333333333333,
+    "18": 0.7333333333333333,
+    "19": 0.4,
+    "20": 0.4,
     "21": 0.6666666666666666,
     "22": 0.6666666666666666,
     "23": 0.6666666666666666,
@@ -612,23 +660,26 @@
     "41": 1.0,
     "42": 1.0,
     "43": 1.0,
-    "44": 1.0
+    "44": 1.0,
+    "45": 1.0,
+    "46": 1.0,
+    "47": 1.0
   },
   "gods": [
     {
       "id": "src_tauri_src_lib_write_checkpoint",
       "label": "write_checkpoint()",
-      "degree": 28
+      "degree": 30
     },
     {
       "id": "src_tauri_src_lib_open_ledger_store",
       "label": "open_ledger_store()",
-      "degree": 25
+      "degree": 27
     },
     {
       "id": "src_tauri_src_lib_ledgercrypto",
       "label": "LedgerCrypto",
-      "degree": 22
+      "degree": 23
     },
     {
       "id": "src_tauri_src_lib_restore_files_in_store",
@@ -636,13 +687,23 @@
       "degree": 22
     },
     {
+      "id": "src_tauri_src_lib_open_encrypted_store",
+      "label": "open_encrypted_store()",
+      "degree": 16
+    },
+    {
+      "id": "src_tauri_src_lib_load_snapshot",
+      "label": "load_snapshot()",
+      "degree": 16
+    },
+    {
       "id": "src_tauri_src_lib_write_encrypted",
       "label": "write_encrypted()",
       "degree": 15
     },
     {
-      "id": "src_main_render",
-      "label": "render()",
+      "id": "src_tauri_src_lib_read_project",
+      "label": "read_project()",
       "degree": 14
     },
     {
@@ -651,18 +712,8 @@
       "degree": 14
     },
     {
-      "id": "src_tauri_src_lib_load_bundled_sample",
-      "label": "load_bundled_sample()",
-      "degree": 14
-    },
-    {
-      "id": "src_tauri_src_lib_load_snapshot",
-      "label": "load_snapshot()",
-      "degree": 14
-    },
-    {
-      "id": "src_tauri_src_lib_open_encrypted_store",
-      "label": "open_encrypted_store()",
+      "id": "src_tauri_src_lib_checkpoint_dirs",
+      "label": "checkpoint_dirs()",
       "degree": 14
     }
   ],
