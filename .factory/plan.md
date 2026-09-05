@@ -27,10 +27,11 @@ The distinction below is deliberate:
 
 ### Exact current blockers
 
-1. **Current-source release parity is unverified.** `main` (`ae7f7ae`) is ahead
-   of the `v0.1.12` tag (`7dc899d`). The delta includes a web history-state
-   repair in `src/main.ts`; v0.1.12 desktop assets therefore cannot prove that
-   they contain the current source. `scripts/verify-published-release.mjs`
+1. **Current-source release parity is unverified.** The audited product
+   implementation (`ae7f7ae`, before this documentation commit) is ahead of
+   the `v0.1.12` tag (`7dc899d`). The delta includes a web history-state repair
+   in `src/main.ts`; v0.1.12 desktop assets therefore cannot prove that they
+   contain the current source. `scripts/verify-published-release.mjs`
    verifies published checksums and permits an ancestor release, not exact
    current-commit identity. Tag and release the current intended product
    commit, then verify target commit, hashes, manifest, and one installed
