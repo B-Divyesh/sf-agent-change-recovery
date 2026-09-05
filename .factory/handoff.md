@@ -125,3 +125,46 @@ signing secrets. No infrastructure, DNS, billing, or signing state was changed.
 
 Pre-existing modified `graphify-out/` files were preserved and excluded from
 all repair commits.
+
+---
+
+# Handoff — venture-plan audit (2026-09-05)
+
+## What changed
+
+- Added `.factory/plan.md`, the product's evidence-based M1–M3 venture plan.
+  It distinguishes the accepted local-recovery core from fixture-only or
+  incomplete commercial evidence.
+- Wrote `/work/.evidence/venture-plan.json` with the next milestone,
+  dependencies, accepted milestone evidence, demonstrated-only work, and
+  blockers.
+- No product source, deployment, billing configuration, or release state was
+  changed.
+
+## Verification run by this planner
+
+- `npm ci` completed with 0 reported vulnerabilities.
+- `npm test` passed: 39 tests.
+- `npm run test:claim-tags` passed: 33 claims have exactly one tag.
+- `npm run test:claims` passed: all 33 declared commands, including native
+  filesystem/privacy, browser, installer, and published-release checks.
+- `npm run build` passed and produced `dist/site` (43.75 KB raw JavaScript;
+  15.78 KB raw CSS).
+- After installing the Linux prerequisites already declared by the release
+  workflow, `cargo test --manifest-path src-tauri/Cargo.toml` passed: 23 tests;
+  `scripts/test-native-privacy.sh` passed with zero network syscalls.
+- `scripts/verify-url.sh https://agent-change-recovery.sociobot.in` passed.
+- `npm run verify:paid-checkout` confirmed the public $15 USD listing and a
+  hosted checkout HTTP 303. This is redirect evidence only, not a completed
+  purchase or issued-license proof.
+- `node scripts/verify-published-release.mjs` confirmed v0.1.12 macOS,
+  Windows, and Linux artifact checksums and `latest.json`.
+
+## Pending work
+
+The next milestone is M2, not M3. The current branch is ahead of the v0.1.12
+desktop tag, so source-to-artifact identity for the current branch is not yet
+proven. A controlled billing test must also prove checkout return and valid
+license activation in the packaged app without using or requesting production
+credentials. The five-minute/80% pilot outcome remains unmeasured. See
+`.factory/plan.md` for the exact acceptance criteria and external boundaries.
