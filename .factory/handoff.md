@@ -215,3 +215,54 @@ checkout-return, issued-license, and exact current-source-to-packaged-release
 proof remains a separately recorded future milestone gate. GitHub Releases and
 the Sociobot product catalog/checkout were reachable; no payment, production
 license, infrastructure, signing, DNS, or billing configuration was changed.
+
+---
+
+# Handoff — review 3 (M1 acceptance)
+
+## Result
+
+**PASS — zero findings and zero untested claims.**
+
+Review 3 independently rechecked implementation
+`5c8c5c125f799610b0214495e8756f9455b45092` from clean documentation baseline
+`65f78fefa165436003e2949ec9d5fa517f89eab5`. No product code, deployment,
+billing, DNS, infrastructure, or release state was changed.
+
+Fresh desktop and phone browsers passed the first read, one-click populated
+sample, selected-file reversal, safety checkpoint, reset/exit isolation,
+keyboard/focus, reduced motion, route, legal, designed 404, link, privacy,
+offline/update, accessibility, and performance checks. The live HTML and
+JavaScript exactly matched the clean production build.
+
+## Verification
+
+- `npm run test:claim-tags` — 33/33 claims had exactly one matching tag.
+- `npm run test:claims` — all 33 exact claim commands passed.
+- `npm test -- --reporter=line` — 39/39 passed.
+- `cargo test --manifest-path src-tauri/Cargo.toml` — 23/23 passed.
+- `scripts/test-native-privacy.sh` — zero network syscalls.
+- `npm run build` — passed and produced `dist/site`.
+- `npm audit --audit-level=high`, Rust format, and shipped-target Clippy checks
+  passed.
+- `npm run verify:paid-checkout`, the published-release verifier, Windows
+  consumer proof, and the live URL verifier passed.
+- A clean Linux install verified the v0.1.12 checksum. The installed AppImage
+  loaded its bundled sample and completed a one-file reversal with an encrypted
+  safety checkpoint while preserving three unrelated files.
+- Fresh Lighthouse: performance 99; accessibility, best practices, and SEO 100;
+  LCP 2.18 s; TBT 15 ms; CLS 0.
+
+The optional, undeclared Rust 1.98 all-target Clippy diagnostic reports
+`clippy::drop_non_drop` in one test helper. Required tests/builds and shipped
+Rust target lint pass. If all-target Clippy becomes a declared gate, remove the
+redundant test-only `drop(crypto)` or pin the toolchain.
+
+## Remaining milestone gates
+
+M1 passes. M2 still requires exact current-source-to-packaged-release parity
+and a controlled real checkout-return, license activation, daily-cache, and
+revocation/expiry proof in the packaged app. GitHub Releases, the Sociobot
+catalog/checkout, license verification, and platform signing are recorded as
+separate external dependencies in `.factory/review-3.md`. They are not M1
+defects or shipped M1 claims.
