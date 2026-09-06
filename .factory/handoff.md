@@ -168,3 +168,50 @@ proven. A controlled billing test must also prove checkout return and valid
 license activation in the packaged app without using or requesting production
 credentials. The five-minute/80% pilot outcome remains unmeasured. See
 `.factory/plan.md` for the exact acceptance criteria and external boundaries.
+
+---
+
+# Handoff — verification 13 (M1 acceptance)
+
+## Result
+
+**PASS — zero findings and zero untested claims.**
+
+Verification 13 independently reviewed the M1 local recovery core from a
+fresh clean clone and against the live site. The reviewed implementation is
+`5c8c5c125f799610b0214495e8756f9455b45092`; the final-polish documentation
+commit is `e30ed37`; the current plan/documentation commit is
+`9caa92aea786676dbd50a7c930cdd0e923621010`.
+
+The live JavaScript exactly matched the fresh production build. Fresh desktop
+and phone contexts completed the one-click sample flow, selected-file recovery,
+safety checkpoint, reset, and exit without changing a real-storage sentinel.
+Offline, keyboard/focus, reduced motion, legal routes, designed 404, link,
+metadata, privacy, and accessibility checks passed. The intentional HTTP 404
+is a complete page, not a defect.
+
+## Verification run
+
+- `npm run test:claim-tags` — 33 claims, exactly one tag each.
+- `npm run test:claims` — all 33 exact declared commands passed after the
+  documented Tauri prerequisites were installed.
+- `npm test` — 39/39 passed.
+- `cargo test --manifest-path src-tauri/Cargo.toml` — 23/23 passed.
+- `scripts/test-native-privacy.sh` — zero native network syscalls.
+- `npm run build` — passed; live JavaScript SHA-256 matched the fresh output.
+- `npm run verify:paid-checkout`, published-release verification, Windows
+  consumer proof, and a fresh checksum-verified Linux AppImage smoke all
+  passed.
+- Live Axe found no violations on desktop or phone for `/`, `/demo`, `/app`,
+  `/privacy`, `/terms`, and the intentional 404.
+
+See `.factory/verification-13.md` for detailed evidence and the disposition of
+all prior review findings.
+
+## Current milestone and external dependencies
+
+The controller stage is M1 acceptance; M1 passes. The venture plan's M2
+checkout-return, issued-license, and exact current-source-to-packaged-release
+proof remains a separately recorded future milestone gate. GitHub Releases and
+the Sociobot product catalog/checkout were reachable; no payment, production
+license, infrastructure, signing, DNS, or billing configuration was changed.
