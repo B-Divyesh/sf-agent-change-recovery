@@ -687,13 +687,13 @@
       "degree": 22
     },
     {
-      "id": "src_tauri_src_lib_open_encrypted_store",
-      "label": "open_encrypted_store()",
+      "id": "src_tauri_src_lib_load_snapshot",
+      "label": "load_snapshot()",
       "degree": 16
     },
     {
-      "id": "src_tauri_src_lib_load_snapshot",
-      "label": "load_snapshot()",
+      "id": "src_tauri_src_lib_open_encrypted_store",
+      "label": "open_encrypted_store()",
       "degree": 16
     },
     {
@@ -702,18 +702,18 @@
       "degree": 15
     },
     {
-      "id": "src_tauri_src_lib_read_project",
-      "label": "read_project()",
-      "degree": 14
-    },
-    {
-      "id": "src_tauri_src_lib_create_ledger_store",
-      "label": "create_ledger_store()",
+      "id": "src_main_render",
+      "label": "render()",
       "degree": 14
     },
     {
       "id": "src_tauri_src_lib_checkpoint_dirs",
       "label": "checkpoint_dirs()",
+      "degree": 14
+    },
+    {
+      "id": "src_tauri_src_lib_create_ledger_store",
+      "label": "create_ledger_store()",
       "degree": 14
     }
   ],
